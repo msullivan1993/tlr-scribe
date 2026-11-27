@@ -61,7 +61,7 @@ npx wrangler secret put IMAGE_KEY
 Set the same `IMAGE_KEY` on the main Worker and `IMAGE_BASE` = `https://<your-image-worker>.<account>.workers.dev/map.png`. Image URLs are signed with it (the key itself is never sent); once both Workers are deployed, set `IMAGE_REQUIRE_SIG=on` on the image Worker.
 
 ## 6. The scheduled task (Claude)
-1. In claude.ai, add a custom connector with the URL `https://<your-worker>.<account>.workers.dev/mcp/<MCP_SECRET>` (or `/mcp` with an `Authorization: Bearer <MCP_SECRET>` header where your platform lets you set one: a secret in a URL ends up in more logs).
+1. In claude.ai, add a custom connector with the URL `https://<your-worker>.<account>.workers.dev/mcp/<MCP_SECRET>` (claude.ai's connector form does not send custom headers to the server, so the secret goes in the URL there; on other platforms that do send headers, `/mcp` with `Authorization: Bearer <MCP_SECRET>` keeps it out of URLs and logs). Keep Headers and Authentication empty when the secret is in the URL: an `Authorization` header is checked first.
 2. Create a scheduled task with no schedule (it is woken by the Worker), attach your instance repo and the connector, and use this prompt:
 
    > You run the TLR Scribe draft task for <your page>. Profile: public-safety.
