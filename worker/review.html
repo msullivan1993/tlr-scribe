@@ -74,6 +74,7 @@ async function api(path, body) {
   if (!r.ok || j.error) throw new Error(j.error || ("HTTP " + r.status));
   return j;
 }
+const pubName = () => (state.list && state.list.publisher) || "Facebook";
 function imgSrc(image) { if (!image) return ""; const q = new URLSearchParams(image); return API + "image?" + q.toString(); }
 const TABS = [["draft", "Drafts"], ["scheduled", "Auto-posts"], ["published", "Live"], ["prayers", "🙏"], ["fixes", "Fixes"], ["logs", "Run logs"]];
 function setHeader(title, showBack, showTabs) {
@@ -125,7 +126,7 @@ async function showList(quiet) {
   state.list = list; state.listSig = sig;
   setHeader({ draft: "Drafts", scheduled: "Auto-posts", published: "Live posts" }[state.tab], false, true);
   const items = state.list[state.tab] || [];
-  const fb = state.list.facebook === "connected" ? "" : `<div class="box small">Facebook is not connected yet, so Publish is off.</div>`;
+  const fb = state.list.facebook === "connected" ? "" : `<div class="box small">${pubName()} is not connected yet, so Publish is off.</div>`;
   if (!items.length) { $("#main").innerHTML = fb + `<div class="empty">Nothing here right now.</div>`; return; }
   $("#main").innerHTML = fb + items.map((p) => {
     const lines = String(p.text).split("\n");
@@ -189,9 +190,9 @@ async function showPost(id, quiet) {
     <a class="btn" style="display:flex;align-items:center;justify-content:center;text-decoration:none" href="#post-${p.id}/fix">${p.state === "published" ? "Fix location &amp; redraw image" : "Fix location, label &amp; image"}</a>
     <label for="txt">Post text${editable ? " · tap to edit" : ""}</label>
     <textarea id="txt" ${editable ? "" : "readonly"}>${esc(p.text)}</textarea>
-    ${canPublish ? `<button class="btn primary" id="pub" ${state.list && state.list.facebook !== "connected" ? "disabled" : ""}>Publish to Facebook</button>` : ""}
+    ${canPublish ? `<button class="btn primary" id="pub" ${state.list && state.list.facebook !== "connected" ? "disabled" : ""}>Publish to ${pubName()}</button>` : ""}
     <div class="row">
-      ${editable ? `<button class="btn" id="save">${p.state === "published" ? "Save to Facebook" : "Save edits"}</button>` : ""}
+      ${editable ? `<button class="btn" id="save">${p.state === "published" ? "Save to " + pubName() : "Save edits"}</button>` : ""}
       ${p.state === "scheduled" ? `<button class="btn" id="pull">Hold as draft</button>` : ""}
       ${canPublish ? `<button class="btn danger" id="discard">Discard</button>` : ""}
     </div>
@@ -207,7 +208,7 @@ async function showPost(id, quiet) {
   const busy = (b) => { state.busy = b; document.querySelectorAll("#main button").forEach((x) => (x.disabled = b)); };
   if ($("#save")) $("#save").onclick = async () => { busy(true); try { await api("save", { id: p.id, version: p.version, text: txt() }); toast("Saved"); await showPost(p.id); } catch (e) { toast(e.message, 6000); busy(false); } };
   if ($("#pub")) $("#pub").onclick = async () => {
-    if (!confirm("Publish this post to the Facebook page now?")) return;
+    if (!confirm("Publish this post now (via " + pubName() + ")?")) return;
     busy(true);
     try { const r = await api("publish", { id: p.id, version: p.version, text: txt() }); toast("Published"); location.hash = "#post-" + r.id; await showPost(r.id); }
     catch (e) { toast(e.message, 8000); busy(false); }

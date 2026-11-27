@@ -28,6 +28,7 @@ Claude scheduled task ── scribe connector (MCP) ┘
 - [docs/SETUP.md](docs/SETUP.md): deploy the Workers, create your instance repo and the scheduled task.
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): what each part does.
 - [docs/UPDATING.md](docs/UPDATING.md): pull core updates into your instance without touching your local files.
+- [docs/PUBLISHING.md](docs/PUBLISHING.md): publish to Facebook directly, or through Publer (and its limits).
 - [docs/RUNTIMES.md](docs/RUNTIMES.md): run the agent on Claude (the tested setup) or another AI platform.
 
 ## Repository layout

@@ -59,9 +59,10 @@ Walk through [SETUP.md](SETUP.md) step 2: D1 database, KV namespace, `worker/wra
 
 ### Phase 5: Review page and publishing
 - Cloudflare Access on the review hostname, then `ACCESS_TEAM`, `ACCESS_AUD` and `REVIEW_URL` ([SETUP.md](SETUP.md) step 3).
-- Facebook: Meta app, Page token, `FB_PAGE_ID` and `FB_PAGE_TOKEN` as secrets (step 4). The owner does the Meta dashboard steps themselves. Explain each screen, but don't ask for the token.
+- Ask once: post straight to Facebook (Meta app) or through Publer? Explain the trade-offs from [PUBLISHING.md](PUBLISHING.md) in two or three lines: Publer is easier to set up but caps posts per day (12/24/36 by plan) and can't preserve edits made on Facebook. Busy pages should go direct.
+- Facebook: Meta app, Page token, `FB_PAGE_ID` and `FB_PAGE_TOKEN` as secrets (step 4). Publer: `PUBLISHER=publer`, the `PUBLER_KEY` secret, `PUBLER_WORKSPACE`, `PUBLER_ACCOUNTS` and `PUBLER_DAILY_LIMIT` (PUBLISHING.md). The owner does the Meta dashboard steps themselves. Explain each screen, but don't ask for the token.
 - Optional: the map image Worker (step 5), and Discord or Pushover notices (step 7).
-- Check: `/status` shows `facebook: ok (<page name>)`, and `/review` opens behind the Access login.
+- Check: `/status` shows `facebook: ok (<page name>)` (or `publer: ok (...)`), and `/review` opens behind the Access login.
 
 ### Phase 6: The agent
 Set up the scheduled agent on the owner's AI platform ([RUNTIMES.md](RUNTIMES.md)):

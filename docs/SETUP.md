@@ -44,6 +44,8 @@ In ThinLine Radio, add a custom alert webhook to `https://<your-worker>.<account
 Put `/review` behind Cloudflare Access (a custom domain such as `review.example.com` routed to the Worker, an Access application with your email), then set `ACCESS_TEAM`, `ACCESS_AUD` and `REVIEW_URL`.
 
 ## 4. Facebook
+Prefer Publer over a Meta app? See [PUBLISHING.md](PUBLISHING.md) for the trade-offs (daily post caps, rate limits) and setup, then skip this step.
+
 Create a Meta app, get a never-expiring Page access token with `pages_manage_posts`, `pages_read_engagement` (and `pages_read_user_content` for the prayer tracker), and save `FB_PAGE_ID` and `FB_PAGE_TOKEN` as Worker secrets. `/privacy` is the privacy page Meta asks for (`PRIVACY_NAME`, `PRIVACY_EMAIL`).
 
 ## 5. Map images (optional)

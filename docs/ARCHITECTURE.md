@@ -5,7 +5,7 @@
 2. **Wake.** The Worker batches new items and fires the Claude scheduled task through its API trigger, at most every `WAKE_EVERY_MINUTES` (urgent words sooner). Routine wakes can go to a cheaper light task. A run counts as in progress until its run log arrives.
 3. **Agent run.** The task calls `get_work` on the scribe connector (MCP at `/mcp`), reads `CORE.md`, the profile's `RULES.md` and `local/`, and creates or updates drafts, tracking records and the storm tracker. It finishes with `runlog_write`.
 4. **Review.** Drafts appear on `/review` (Cloudflare Access). The owner edits, publishes, holds or discards them. Scheduled auto-posts, when enabled, publish after a delay unless held.
-5. **Publish.** The Worker posts to the Facebook Page (Graph API) and edits live posts as updates arrive. Discord and Pushover get notices.
+5. **Publish.** The Worker posts to the Facebook Page (Graph API), or through Publer with `PUBLISHER=publer` (docs/PUBLISHING.md), and edits live posts as updates arrive. Discord and Pushover get notices.
 
 ## Storage
 - **D1** (`DB`): alerts, context batches, incidents (tracking records), posts and their versions, run logs, corrections, storm tracker, prayer counts. Tables are created on first use; old alerts and batches are cleaned after `D1_KEEP_DAYS`.

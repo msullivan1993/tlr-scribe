@@ -13,6 +13,7 @@ nothing leaves your machine.
 | `prayers.mjs` | the prayer tracker, the all-time scan and the self-updating Discord message |
 | `wake.mjs` | wake timing and the urgent-alert lane |
 | `urgent.mjs` | which alert wording counts as urgent |
+| `publer.mjs` | publishing through Publer: image upload job, publish job, post lookup, live updates, daily limit |
 | `refs.mjs` | system/talkgroup refs and unit IDs in alert and radio-batch headers |
 
 `node tests/serve.mjs` serves the review page with sample posts at http://localhost:8787/review to click through.
