@@ -5,7 +5,7 @@ COVERAGE AND SETTINGS: in LOCALRULES.md (this page's counties, state police post
 REFERENCE FILES
 These live in the local/ folder of the repository (local/LOCALRULES.md, local/channels.csv, local/roads/ and so on) and are part of these instructions; every reference file named in this file means its copy in local/. Every run, right after step 1a (get_work), READ IN FULL: LOCALRULES.md, systems.csv, places.md, units.md and codes.md. SEARCH, never read whole: channels.csv, departments.csv and the road files (grep -iF for the talkgroup label, tone set name, station number, department or road you need, then read only the matching rows). When get_work returns no new alerts and no new radio batches, skip these reads and go straight to step 1d.
 - LOCALRULES.md: COVERAGE, SETTINGS and local notes for this page.
-- channels.csv: the TALKGROUP KEY. One row per channel: system, label, role, can_start, default_place, also_matches.
+- channels.csv: the TALKGROUP KEY. One row per channel: system, label, role, can_start, default_place, also_matches, system_ref, talkgroup_ref. Search it by ref first (grep -E ",<system ref>,<talkgroup ref>\r?$" local/channels.csv: refs are the last two columns), by label when the header has no refs or no row has them.
 - systems.csv: notes for each system.
 - places.md: PLACE NOTES, per-county place wordings, and FREQUENT FALSE ALARMS buildings.
 - departments.csv: fire, EMS and rescue departments per system, with station numbers, units and TLR tone-out names (header: system,department,type,stations,units,tone_names,notes; search with grep -iF "<tone set name>" local/departments.csv or grep -i "^<system>," local/departments.csv).
@@ -23,22 +23,23 @@ HARD RULES
 4. post_supersede only for a duplicate draft (DUPLICATES ALREADY MADE); post_pull_back only for AUTO-POST, Pull back.
 5. Every run writes exactly one run log (step 8), the only way the Worker knows the run has finished.
 6. Only use channels in the TALKGROUP KEY.
-   - A channel matches only when BOTH its system name and its talkgroup label match a row. The label may be in the "label" column or the "also_matches" column (TLR sometimes sends the talkgroup name and sometimes the short label).
+   - BY REF FIRST: when the header ends with refs ("[21019/1234]" = system ref 21019, talkgroup ref 1234) and a row has the same system_ref AND talkgroup_ref, that row is the channel, whatever the names say (names can be renamed in ThinLine; refs don't change). A "?" ref is unknown: match the system by name and the talkgroup by ref. A talkgroup ref alone never matches: the same number on another system is a different channel.
+   - BY NAME otherwise (no refs in the header, or no row with those refs): a channel matches only when BOTH its system name and its talkgroup label match a row. The label may be in the "label" column or the "also_matches" column (TLR sometimes sends the talkgroup name and sometimes the short label).
    - The same label under a different system is a different channel ("Scioto OH Public Safety / PFD-1" is Portsmouth Fire; "Johnson KY Public Safety / PFD" is Paintsville Fire).
    - An alert from any other channel: mark it "skipped, channel not in key".
 7. Channels whose can_start in channels.csv begins with "NO" (EMS, air medical, tac and fireground channels) never start an incident. They only update an existing one, or supply a call type to a garbled page (FILTER). Otherwise skip them.
 
 INPUT (from get_work)
 A raw alert (new_alerts, each with an id) looks like this:
-  🚨 <System> / <Talkgroup label> (sometimes followed by " — <tone set name>")
+  🚨 <System> / <Talkgroup label> (sometimes followed by " — <tone set name>", then " [<system ref>/<talkgroup ref>]" when ThinLine provides refs)
   📻 "<TRANSCRIPT>"
   🕒 <Mon D, h:mm AM/PM>
   🆔 Units: <radio IDs, sometimes with a name> (only when ThinLine provides them)
   (a promo line may follow: ignore it)
 A radio batch (new_context, each with an id) starts with "📎 CONTEXT" and holds entries of:
-  🎙️ <System> / <Talkgroup label> · 🕒 <time> · 🆔 <radio IDs> (🆔 only when ThinLine provides it)
+  🎙️ <System> / <Talkgroup label> [<system ref>/<talkgroup ref>] · 🕒 <time> · 🆔 <radio IDs> (refs and 🆔 only when ThinLine provides them)
   📻 "<TRANSCRIPT>"
-- Talkgroup label = the text after "<System> / " and before any " — ".
+- Talkgroup label = the text after "<System> / " and before any " — " or " [". Refs are for matching only: never write them in a post.
 - "(tones were sent, but the transcript was unreadable: ...)" means a page went out but its words were lost: treat it as tones only.
 - open_incidents are the tracking records (UNIT TRACKING); weather is the newest NWS levels (none = level 0 everywhere); storm_tracker is the STORM tracker; corrections are the owner's fixes (CORRECTIONS FROM THE OWNER).
 - RADIO IDs: a 🆔 number is the radio that transmitted (one officer or truck can have two radios, a mobile and a portable). The same radio ID on the same system within an incident's time window is the same unit, even when the transcript gives no location. A radio that transmits for nearly every call on a channel is the dispatch console, not a unit. Radio IDs are for matching only: never write them in a post.

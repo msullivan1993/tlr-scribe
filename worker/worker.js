@@ -333,7 +333,7 @@ async function pollTranscripts(env, ctx) {
       message: (pending && pending.message) || [r.systemLabel, tgLabel].filter(Boolean).join(" / "),
       timestamp: r.timestamp,
       transcription: junk ? `(tones were sent, but the transcript was unreadable: ${junk})` : r.transcript,
-      metadata: { callId: r.callId, systemLabel: r.systemLabel, talkgroupLabel: tgLabel, talkgroupRef: r.talkgroupRef, alertType: pending ? (pending.alertType || "tone") : "poll", toneSetName: pending ? pending.toneSetName : undefined, units: r.units },
+      metadata: { callId: r.callId, systemLabel: r.systemLabel, talkgroupLabel: tgLabel, systemRef: r.systemRef, talkgroupRef: r.talkgroupRef, alertType: pending ? (pending.alertType || "tone") : "poll", toneSetName: pending ? pending.toneSetName : undefined, units: r.units },
     };
     const out = await saveAlert(alert, env);
     if (!out.ok && !out.skipped) {
@@ -801,7 +801,8 @@ async function collectContext(env, results, keywords) {
   const fmtLine = (r) => {
     const t = r.text.length > 500 ? r.text.slice(0, 499) + "…" : r.text;
     const u = unitsText(r.units);
-    return `🎙️ ${[r.systemLabel, r.tgLabel].filter(Boolean).join(" / ")} · 🕒 ${formatWhen(r.timestamp, env)}${u ? ` · 🆔 ${u}` : ""}\n📻 "${t}"`;
+    const refs = refsText(r.systemRef, r.talkgroupRef);
+    return `🎙️ ${[r.systemLabel, r.tgLabel].filter(Boolean).join(" / ")}${refs ? " " + refs : ""} · 🕒 ${formatWhen(r.timestamp, env)}${u ? ` · 🆔 ${u}` : ""}\n📻 "${t}"`;
   };
   const lines = batch.map(fmtLine);
   if (corrections.length) {
@@ -956,6 +957,15 @@ async function handleStatus(url, env, ctx) {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+// SYSTEM AND TALKGROUP REFS: the IDs ThinLine gives each system and talkgroup ("[21019/1234]").
+// Names can be renamed in TLR; refs don't, so the rules match channels.csv by ref first.
+function refsText(sysRef, tgRef) {
+  const ok = (x) => x != null && String(x).trim() !== "" && String(x) !== "0";
+  if (!ok(sysRef) && !ok(tgRef)) return "";
+  return `[${ok(sysRef) ? String(sysRef).trim() : "?"}/${ok(tgRef) ? String(tgRef).trim() : "?"}]`;
+}
+
+// ---------------------------------------------------------------------------
 // Radio unit IDs (P25 radio ID / MDC / FleetSync) from ThinLine, when it provides them.
 // Accepts [{unitRef,label}] or plain numbers. Returns e.g. "894 (BRAVO 71), 1605" or "".
 function unitsText(units) {
@@ -976,7 +986,8 @@ function buildText(alert, env) {
 
   const prefix = env.PREFIX ?? "🚨";
   const headline = alert.message || [meta.systemLabel, meta.talkgroupLabel].filter(Boolean).join(" / ");
-  const head = [prefix, headline].filter(Boolean).join(" ");
+  const refs = refsText(meta.systemRef, meta.talkgroupRef);
+  const head = [prefix, headline].filter(Boolean).join(" ") + (refs ? " " + refs : "");
 
   let when = "";
   if (alert.timestamp) {
