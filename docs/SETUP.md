@@ -46,8 +46,21 @@ Invoke-RestMethod -Headers @{ "X-Status-Secret" = "<your TLR_SECRET>" } https://
 In ThinLine Radio, add a custom alert webhook to `https://<your-worker>.<account>.workers.dev/` with the TLR_SECRET as its secret.
 
 ## 3. Review page
-Put `/review` behind Cloudflare Access (a custom domain such as `review.example.com` routed to the Worker, an Access application with your email), then set `ACCESS_TEAM`, `ACCESS_AUD` and `REVIEW_URL`.
-- In the Access application: **Advanced settings → Cookie settings**: SameSite **Lax**, HttpOnly **on**, binding cookie **on**. Keep the policy to your own email address(es), and set `REVIEW_EMAILS` to the same list.
+The review page (`/review`) is where you read, edit and publish drafts. It must sit behind Cloudflare Access, so only you can open it. You need a domain on Cloudflare (any domain you own, added to your Cloudflare account). Cloudflare's menu names change now and then; the steps below are the current ones.
+
+1. **Give the Worker an address on your domain.** Workers & Pages → your Worker → Settings → **Domains & Routes** → Add → **Custom domain**, e.g. `review.example.com`. The page is then at `https://review.example.com/review`.
+2. **Protect it with Access.** Open the **Zero Trust** dashboard → **Access controls → Applications** (older dashboards: Access → Applications) → **Add an application** → **Self-hosted**.
+   - Application domain: `review.example.com` (the whole hostname).
+   - Policy: **Allow**, with **Emails** = your own email address(es). Never "everyone" or a whole email domain.
+   - **Advanced settings → Cookie settings**: SameSite **Lax**, HttpOnly **on**, binding cookie **on**.
+   - Save. On the application's overview, copy the **Application Audience (AUD) Tag**.
+3. **Tell the Worker about it** (Worker → Settings → Variables and Secrets, type Text):
+   - `ACCESS_TEAM`: your team name, the part before `.cloudflareaccess.com` (Zero Trust → Settings → **Team domain**).
+   - `ACCESS_AUD`: the AUD tag you copied.
+   - `REVIEW_EMAILS`: the same email address(es) as the policy, comma-separated.
+   - `REVIEW_URL`: `https://review.example.com` (used for links in Discord and Pushover notices).
+4. **Check it:** open `https://review.example.com/review`. You should get Cloudflare's sign-in page, then the Drafts list. If the page says why it refused you (wrong team name, wrong AUD tag, email not allowed), fix that variable. Open it at the custom domain, never at `workers.dev`, which Access does not cover.
+
 - `REVIEW_TOKEN` is only for testing before Access is set up; it stops working once Access is configured.
 - `/status` needs the header `X-Status-Secret` (set `STATUS_SECRET`, or it uses `TLR_SECRET`).
 
