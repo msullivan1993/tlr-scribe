@@ -42,7 +42,7 @@ Build each file from what the owner tells you. Show a short summary of each file
    - STATE POLICE, AIRPORTS, MUTUAL AID PARTNERS, DAILY TESTS: ask once whether any apply. Remove the sections that don't.
 2. **`local/counties.txt`**: one `Name:ST:FIPS` line per county. You may look up FIPS codes; the owner confirms the list.
 3. **`local/channels.csv` and `local/systems.csv`**: the talkgroup key.
-   - Best source: the owner runs `tools/talkgroups.sql` (read-only) in psql and gives you the CSV. Without database access: `py tools/fetch_channels.py --hours 168` writes `local/channels-seen.csv` from recent calls.
+   - Best source: the owner runs `tools/talkgroups.sql` (read-only) in psql and gives you the CSV. Walk them through "Getting data out of your ThinLine server" in [SETUP.md](SETUP.md) step by step: open psql, paste the `\copy` line, copy the CSV over. Without database access: `py tools/fetch_channels.py --hours 168` writes `local/channels-seen.csv` from recent calls.
    - From that list, propose rows only for the channels that matter: fire and EMS paging, dispatch, sheriff and police, fireground and tac, state police, air medical.
    - For each row fill `role`, `can_start` (`yes`, or `NO...` for update-only channels: EMS, air medical, tac, fireground) and `default_place`. Ask the owner about any channel whose purpose isn't clear from its name. Never guess a channel's county.
    - Then run `py tools/fetch_channels.py --from <csv> --fill` (or `--fill` alone) to add the system and talkgroup refs.

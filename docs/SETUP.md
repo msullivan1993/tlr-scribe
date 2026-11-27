@@ -2,7 +2,9 @@
 
 Prefer to be walked through it? Give [AI-SETUP.md](AI-SETUP.md) to your AI assistant. Running the agent somewhere other than Claude: [RUNTIMES.md](RUNTIMES.md).
 
-You need: a ThinLine Radio server with API access, a Cloudflare account (Workers free plan works; D1 and KV included), a Claude plan with scheduled tasks, a GitHub account, and (for Facebook) a Facebook Page plus a Meta app. Commands below are PowerShell; on Linux or macOS use `cp`/`python3` equivalents.
+You need: a ThinLine Radio server with API access, a Cloudflare account (Workers free plan works; D1 and KV included), a Claude plan with scheduled tasks, a GitHub account, and (for Facebook) a Facebook Page plus a Meta app.
+
+On the computer you set up from (your own PC is fine; it does not need to be the TLR server): [Git](https://git-scm.com), [Node.js](https://nodejs.org) 22 or newer (for `npx wrangler`), and [Python](https://python.org) 3. Commands below are PowerShell; on Linux or macOS use `cp`, `python3` and `/` paths.
 
 ## 1. Your instance repository
 Your own rules and data live in a **private** repo that pulls core updates from this one (GitHub forks of a public repo can't be private, so don't fork).
@@ -20,8 +22,8 @@ git push -u origin main
 
 Fill in `local/`:
 - `LOCALRULES.md`: page name, footer, site address, coverage, settings, categories.
-- `channels.csv`, `systems.csv`: one row per TLR system and talkgroup you want watched. `system` and `label` must match the names ThinLine shows. Then fill the refs: put `TLR_HOST` and `TLR_API_KEY` in a `.env` file in the repo root (git-ignored) and run `py tools\fetch_channels.py --hours 168 --fill`. That only finds channels with recent calls; for every channel, export the list with `tools/talkgroups.sql` (read-only, in psql) and run `py tools\fetch_channels.py --from C:\temp\talkgroups.csv --fill`. With refs filled, the agent matches channels by ID, so renaming a talkgroup in ThinLine doesn't break the key. `local/channels-seen.csv` lists every channel seen, with its refs, for adding rows by hand.
-- `departments.csv`: build from TLR tone sets with `tools/tonesets.sql` (run it read-only), then tidy by hand.
+- `channels.csv`, `systems.csv`: one row per TLR system and talkgroup you want watched. `system` and `label` must match the names ThinLine shows. The easiest start is the full talkgroup list from your server (see **Getting data out of your ThinLine server** below): keep the rows you want and fill in `role`, `can_start` and `default_place`. Then fill the system and talkgroup IDs with `py tools\fetch_channels.py --from C:\temp\talkgroups.csv --fill`. No database access? Put `TLR_HOST` and `TLR_API_KEY` in a `.env` file in the repo root (git-ignored) and run `py tools\fetch_channels.py --hours 168 --fill` instead; it finds only channels with calls in that window and lists them in `local/channels-seen.csv`. With IDs filled, the agent matches channels by ID, so renaming a talkgroup in ThinLine doesn't break the key.
+- `departments.csv`: if you use tone-outs, export the tone sets (see below) and build one row per department; leave cells blank rather than guess.
 - `places.md`, `units.md`, `codes.md`: start small; add what you learn from real posts.
 - `counties.txt`, then `py tools\fetch_roads.py` to build `local/roads/` (slow: Overpass is rate-limited).
 
@@ -36,7 +38,10 @@ npx wrangler secret put TLR_SECRET
 npx wrangler secret put TLR_API_KEY
 npx wrangler secret put MCP_SECRET
 ```
-Every setting is documented at the top of `worker/worker.js`. Open `https://<your-worker>.<account>.workers.dev/status` to check them.
+Every setting is documented at the top of `worker/worker.js`. To check them:
+```powershell
+Invoke-RestMethod -Headers @{ "X-Status-Secret" = "<your TLR_SECRET>" } https://<your-worker>.<account>.workers.dev/status | ConvertTo-Json -Depth 5
+```
 
 In ThinLine Radio, add a custom alert webhook to `https://<your-worker>.<account>.workers.dev/` with the TLR_SECRET as its secret.
 
@@ -74,3 +79,22 @@ Attach only the connector the task needs: never a posting tool (Publer, Buffer, 
 
 ## 7. Notices (optional)
 Discord: `DISCORD_WEBHOOK_URL` (or split with `_DRAFTS`, `_POSTS`, `_LOG`). Pushover: `PUSHOVER_TOKEN`, `PUSHOVER_USER`.
+
+## Getting data out of your ThinLine server (read-only)
+Two exports make `local/` much quicker to fill: every system and talkgroup with its IDs (`tools/talkgroups.sql`), and every tone set (`tools/tonesets.sql`). Both only **read** two small settings tables. They never touch call audio and change nothing.
+
+1. **On the TLR server**, create a folder for the files: `mkdir C:\temp`. On a Linux server, change `C:/temp/` in the two `.sql` files to `/tmp/`.
+2. **Open psql** connected to your ThinLine database. On Windows, either use **SQL Shell (psql)** from the Start menu, or:
+   ```powershell
+   & "C:\Program Files\PostgreSQL\<version>\bin\psql.exe" -U <database user> -d <ThinLine database>
+   ```
+   The database name and user are in ThinLine's own settings (often `thinline_radio`). A read-only user is best if you have one.
+3. **Paste the one line** from `tools\talkgroups.sql` (open it in Notepad; the line starting with `\copy`) and press Enter. It prints `COPY <number>` and writes `C:\temp\talkgroups.csv`. Do the same with `tools\tonesets.sql` for `C:\temp\tonesets.csv`. If you get "permission denied", that user can't read the tables: use the account ThinLine itself uses.
+4. **Copy the two CSV files** to `C:\temp` on the computer with your repo (they hold only channel names, IDs and tone-set names), then:
+   ```powershell
+   py tools\fetch_channels.py --from C:\temp\talkgroups.csv --fill
+   ```
+5. If you'd rather not touch the database at all, the API method in step 1 works too; it just misses quiet channels.
+
+If a query says a column doesn't exist, your ThinLine version names it differently: run `\d systems` and `\d talkgroups` in psql and adjust the column names in the `.sql` file (or ask your AI assistant to).
+
