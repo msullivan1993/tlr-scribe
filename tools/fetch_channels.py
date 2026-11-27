@@ -14,6 +14,7 @@ capability) in the environment or in a git-ignored .env file in the repo root. R
   py tools\\fetch_channels.py --fill          also fill refs in local/channels.csv (existing refs are kept)
   py tools\\fetch_channels.py --fill --force  overwrite existing refs too
 
+Pages are fetched --delay seconds apart (default 1.5) and a 429 rate limit waits and retries.
 Only channels that had a call in the window appear. Run it again later (or with more --hours) for the rest.
 """
 import csv
@@ -51,7 +52,7 @@ def norm(x):
     return " ".join(str(x or "").lower().split())
 
 
-def fetch(host, key, since_ms, max_pages):
+def fetch(host, key, since_ms, max_pages, delay):
     seen = {}
     for page in range(max_pages):
         q = urllib.parse.urlencode({"dateFrom": since_ms, "limit": 200, "offset": page * 200})
@@ -59,20 +60,30 @@ def fetch(host, key, since_ms, max_pages):
                                      headers={"Authorization": f"Bearer {key}", "Accept": "application/json",
                                               # Cloudflare blocks Python's default "Python-urllib" agent with a 403
                                               "User-Agent": "tlr-scribe-fetch-channels/1.0 (+https://github.com/msullivan1993/tlr-scribe)"})
-        for attempt in range(3):
+        data = None
+        for attempt in range(12):
             try:
                 with urllib.request.urlopen(req, timeout=30) as r:
                     data = json.loads(r.read().decode("utf-8"))
                 break
             except urllib.error.HTTPError as e:
                 body = e.read().decode("utf-8", "replace")[:300]
-                sys.exit(f"ThinLine returned HTTP {e.code}: {body}\n"
-                         "401/403 from ThinLine: check the key has the Transcripts capability. "
-                         "A Cloudflare HTML page instead: a WAF or bot rule is blocking the request.")
+                if e.code == 429 or e.code >= 500:
+                    wait = int(e.headers.get("Retry-After") or 0) or min(15 * (attempt + 1), 90)
+                    print(f"  HTTP {e.code} (rate limit or busy server), waiting {wait}s ...", flush=True)
+                    time.sleep(wait)
+                    continue
+                print(f"ThinLine returned HTTP {e.code}: {body}")
+                if e.code in (401, 403):
+                    print("401/403 from ThinLine: check the key has the Transcripts capability. "
+                          "A Cloudflare HTML page instead: a WAF or bot rule is blocking the request.")
+                break
             except Exception as e:
-                if attempt == 2:
-                    sys.exit(f"ThinLine request failed: {e}")
-                time.sleep(3)
+                print(f"  request failed ({e}), retrying ...", flush=True)
+                time.sleep(5)
+        if data is None:
+            print("Stopped early; keeping the channels collected so far.")
+            break
         batch = data.get("results") or []
         for c in batch:
             sref, tref = c.get("systemRef"), c.get("talkgroupRef")
@@ -86,6 +97,7 @@ def fetch(host, key, since_ms, max_pages):
         print(f"  page {page + 1}: {len(batch)} calls, {len(seen)} channels so far", flush=True)
         if len(batch) < 200:
             break
+        time.sleep(delay)
     else:
         print(f"  stopped at --max-pages {max_pages}; older calls in the window were not read")
     return seen
@@ -103,7 +115,7 @@ def main():
     local.mkdir(exist_ok=True)
 
     print(f"Reading calls from the last {hours:g} h ...")
-    seen = fetch(host, key, int((time.time() - hours * 3600) * 1000), max_pages)
+    seen = fetch(host, key, int((time.time() - hours * 3600) * 1000), max_pages, float(arg("--delay", "1.5")))
     rows = sorted(seen.values(), key=lambda e: (e["system"].lower(), e["label"].lower()))
     out = local / "channels-seen.csv"
     with out.open("w", newline="", encoding="utf-8") as f:
