@@ -73,11 +73,27 @@ async function censusGeocode(q) {
 // Pick a location: ask Mapbox (and, for street addresses, the Census geocoder) and keep a result inside the
 // expected county. Returns { pick, candidates, fallback } where fallback means "no trustworthy pin: show the
 // town or county instead".
+// "9500 West US 60, Carter County, KY": a direction word before a route number confuses geocoders ("West" ->
+// West Virginia), and the Census geocoder wants a town, not a county. Clean the route and offer a version with
+// the town from line 3 ("Grahn, Carter Co, KY" -> "9500 US Highway 60, Grahn, KY").
+function cleanRoute(q) {
+  return String(q).replace(/\b(?:West|East|North|South|W|E|N|S)\.?\s+(?=(?:US|U\.S\.|KY|SR|OH|WV|State Route|Highway|Hwy|Route)\b)/gi, "")
+    .replace(/\bUS[- ]?(\d+)/gi, "US Highway $1");
+}
+function withTown(q, l3) {
+  const m = String(l3 || "").match(/^\s*([^,]+?)\s*,\s*[^,]+?\s+(?:Co|County|Parish|Borough)\.?\s*,\s*([A-Za-z]{2})\s*$/);
+  if (!m || /\b(?:Twp|Township)\b/i.test(m[1])) return null;
+  const street = String(q).split(",")[0];
+  return `${street}, ${m[1]}, ${m[2].toUpperCase()}`;
+}
 async function locate(q, mode, l3, token) {
   const want = expectedCounty(l3);
   const address = (mode === "pin" || mode === "block") && /^\s*\d/.test(q);
-  const [mb, cs] = await Promise.all([geocode(q, mode, token).catch(() => null), address ? censusGeocode(q) : null]);
-  const candidates = [mb, cs].filter(Boolean).map((c) => ({ ...c, inCounty: inCounty(c, want) }));
+  q = cleanRoute(q);
+  const qTown = address ? withTown(q, l3) : null;
+  const [mb, cs, cs2] = await Promise.all([geocode(q, mode, token).catch(() => null), address ? censusGeocode(q) : null,
+    qTown && qTown !== q ? censusGeocode(qTown) : null]);
+  const candidates = [mb, cs, cs2].filter(Boolean).map((c) => ({ ...c, inCounty: inCounty(c, want) }));
   const ok = candidates.filter((c) => c.inCounty === true);
   if (ok.length) return { pick: ok[0], candidates };
   if (!want) return { pick: candidates[0] || null, candidates };          // nothing to check against
@@ -120,9 +136,10 @@ export default {
       const q = (url.searchParams.get("q") || "").trim();
       if (!q) return Response.json({ error: "need q" }, { status: 400 });
       const want = expectedCounty(url.searchParams.get("l3"));
-      const [a, b, c] = await Promise.all([geocode(q, "pin", env.MAPBOX_TOKEN).catch(() => null), geocode(q, "town", env.MAPBOX_TOKEN).catch(() => null), censusGeocode(q)]);
+      const cq = cleanRoute(q), tq = withTown(cq, url.searchParams.get("l3"));
+      const [a, b, c, d] = await Promise.all([geocode(cq, "pin", env.MAPBOX_TOKEN).catch(() => null), geocode(cq, "town", env.MAPBOX_TOKEN).catch(() => null), censusGeocode(cq), tq && tq !== cq ? censusGeocode(tq) : null]);
       const seen = new Set();
-      const candidates = [a, c, b].filter(Boolean).filter((x) => { const k = x.lat.toFixed(4) + x.lon.toFixed(4); if (seen.has(k)) return false; seen.add(k); return true; })
+      const candidates = [a, c, d, b].filter(Boolean).filter((x) => { const k = x.lat.toFixed(4) + x.lon.toFixed(4); if (seen.has(k)) return false; seen.add(k); return true; })
         .map((x) => ({ ...x, inCounty: inCounty(x, want) }));
       return Response.json({ candidates, county: want });
     }
