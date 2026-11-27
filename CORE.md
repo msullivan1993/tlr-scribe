@@ -24,6 +24,7 @@ If a file you need is missing, or the scribe connector's tools are not available
 ## The files
 - `CORE.md`: this file.
 - `profiles/<profile>/RULES.md`: what the agent does for that kind of traffic (public safety, railroad...). Shared by every instance; changes come from upstream.
+- `profiles/<profile>/modules/`: parts of the rules read only when a run needs them (the profile's RULES.md says when). A file with the same name in `local/` replaces a module for this instance.
 - `profiles/<profile>/templates/`: blank local files to copy into `local/` when setting up.
 - `local/`: this instance's own coverage, settings, channel key, departments, places, codes and road files. Never overwritten by updates.
 - `tools/`: helper scripts (road builder, road sound-alike matcher). You may run the ones the profile tells you to run.

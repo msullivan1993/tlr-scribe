@@ -16,10 +16,10 @@ COVERAGE
 - Air medical channels that serve these counties, if any.
 - Counties with the same name in different states are different counties: never confuse or combine them.
 
-STATE POLICE (RULES.md STATE POLICE)
+STATE POLICE (modules/state-police.md; for rules of your own, write a local/state-police.md instead)
 - <Agency and post/troop>: covers <counties>.
 
-AIRPORTS (RULES.md AIRPORT ALERTS)
+AIRPORTS (modules/airport.md)
 - <System / talkgroup label>: <Airport name>; place "<Airport name, County, ST>".
 
 MUTUAL AID PARTNERS (hints for RULES.md MUTUAL AID)
