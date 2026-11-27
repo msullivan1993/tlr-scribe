@@ -611,7 +611,7 @@ def main():
         elif not manual_only:
             time.sleep(10)  # be polite to the public Overpass servers
     if failed:
-        print("\nThese failed (usually a busy server). Rerun just them with:")
+        print("\nThese failed (" + ("see the reason above each one" if PBF is not None else "usually a busy server") + "). Rerun just them with:")
         print("  py tools\\fetch_roads.py " + " ".join(failed))
 
 

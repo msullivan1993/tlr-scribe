@@ -88,29 +88,85 @@ def _near_way(p, coords, metres):
     return any(_seg_dist_m(p, coords[i], coords[i + 1]) <= metres for i in range(len(coords) - 1))
 
 
+def _overpass_boundary(fips):
+    """Fallback when a county's boundary isn't complete in the downloaded files (border counties sometimes
+    aren't): fetch just the boundary from Overpass (one small query) and build the polygon."""
+    import json, urllib.parse, urllib.request
+    from shapely.geometry import LineString
+    from shapely.ops import polygonize, unary_union
+    q = f'[out:json][timeout:120];relation["boundary"="administrative"]["admin_level"="6"]["nist:fips_code"="{fips}"];out geom;'
+    for url in ("https://overpass-api.de/api/interpreter", "https://overpass.kumi.systems/api/interpreter"):
+        try:
+            req = urllib.request.Request(url, data=urllib.parse.urlencode({"data": q}).encode(), headers={"User-Agent": "tlr-scribe road builder"})
+            with urllib.request.urlopen(req, timeout=150) as r:
+                js = json.load(r)
+            break
+        except Exception as e:  # try the next server
+            js, err = None, e
+    if not js or not js.get("elements"):
+        return None
+    outer, inner = [], []
+    for m in js["elements"][0].get("members", []):
+        g = m.get("geometry") or []
+        if m.get("type") == "way" and len(g) >= 2:
+            (inner if m.get("role") == "inner" else outer).append(LineString([(p["lon"], p["lat"]) for p in g]))
+    polys = list(polygonize(unary_union(outer)))
+    if not polys:
+        return None
+    geom = unary_union(polys)
+    if inner:
+        holes = list(polygonize(unary_union(inner)))
+        if holes:
+            geom = geom.difference(unary_union(holes))
+    return (prep(geom), geom.bounds)
+
+
+def _file_box(path):
+    """(min lon, min lat, max lon, max lat) from the file header, or None when the file has none."""
+    try:
+        b = osmium.FileProcessor(path).header.box()
+        if b.valid():
+            return (b.bottom_left.lon, b.bottom_left.lat, b.top_right.lon, b.top_right.lat)
+    except Exception:
+        pass
+    return None
+
+
 def extract(paths, counties, skip_highway=None):
     """Returns {fips: {"main": js, "exits": js, "geo": js}} in Overpass JSON shape, for the
-    (name, st, fips) counties found in the given .osm.pbf (or .osm) files."""
+    (name, st, fips) counties in the given .osm.pbf (or .osm) files. Each file is read twice: once for
+    county boundaries, once for roads. A county's roads are collected from every file that covers it, so
+    roads in a neighbouring state's download near the state line are included too."""
     wanted = {f for _, _, f in counties}
-    result = {}
+    names = {f: f"{n} County, {st}" for n, st, f in counties}
+    shapes = {}
     for path in paths:
-        todo = wanted - set(result)
+        todo = wanted - set(shapes)
         if not todo:
             break
         print(f"Reading county boundaries from {path} ...", flush=True)
-        shapes = _county_shapes(path, todo)
-        if not shapes:
-            print("  none of the remaining counties are in this file")
+        found = _county_shapes(path, todo)
+        print(f"  {len(found)} of your counties found", flush=True)
+        shapes.update(found)
+    for f in sorted(wanted - set(shapes)):
+        print(f"  {names[f]}: boundary not complete in the downloaded files; fetching just the boundary from Overpass ...", flush=True)
+        g = _overpass_boundary(f)
+        if g:
+            shapes[f] = g
+        else:
+            print(f"  {names[f]}: no boundary found (check its FIPS code in local/counties.txt)")
+    acc = {f: {"main": {}, "geo": {}, "mw": {}} for f in shapes}  # deduplicated by way/node id across files
+    special = {}
+    milestones = {}
+    for path in paths:
+        box = _file_box(path)
+        mine = {f: v for f, v in shapes.items()
+                if box is None or not (v[1][2] < box[0] or v[1][0] > box[2] or v[1][3] < box[1] or v[1][1] > box[3])}
+        if not mine:
             continue
-        print(f"  found {len(shapes)} of the counties; reading roads (a few minutes for a whole state) ...", flush=True)
-        main = defaultdict(list)
-        geo = defaultdict(list)
-        motorways = defaultdict(list)  # fips -> [(tags, node ids, coords)]
-        special = {}                   # node id -> (tags, (lat, lon)) for exits and mile posts
-        milestones = []                # (tags, (lat, lon))
+        print(f"Reading roads from {path} for {len(mine)} counties (a few minutes for a whole state) ...", flush=True)
         n_ways = 0
-        fp = osmium.FileProcessor(path).with_locations()
-        for o in fp:
+        for o in osmium.FileProcessor(path).with_locations():
             if o.is_node():
                 t = o.tags
                 if not t or not o.location.valid():
@@ -120,12 +176,12 @@ def extract(paths, counties, skip_highway=None):
                 if hw == "motorway_junction":
                     special[o.id] = (dict(t), ll)
                 elif hw == "milestone":
-                    milestones.append((dict(t), ll))
+                    milestones[o.id] = (dict(t), ll)
                 is_place = t.get("place") in PLACE_TYPES and t.get("name")
                 is_poi = t.get("name") and t.get("addr:housenumber") and t.get("addr:street")
                 if is_place or is_poi:
-                    for f in _counties_for([(ll[1], ll[0])], shapes):
-                        main[f].append({"type": "node", "id": o.id, "tags": dict(t)})
+                    for f in _counties_for([(ll[1], ll[0])], mine):
+                        acc[f]["main"][("node", o.id)] = {"type": "node", "id": o.id, "tags": dict(t)}
             elif o.is_way():
                 t = o.tags
                 hw = t.get("highway")
@@ -140,37 +196,39 @@ def extract(paths, counties, skip_highway=None):
                     continue
                 if not coords:
                     continue
-                fs = _counties_for([(lon, lat) for lat, lon in _sample(coords)], shapes)
+                fs = _counties_for([(lon, lat) for lat, lon in _sample(coords)], mine)
                 if not fs:
                     continue
                 tags = dict(t)
                 for f in fs:
-                    main[f].append({"type": "way", "id": o.id, "tags": tags})
+                    acc[f]["main"][("way", o.id)] = {"type": "way", "id": o.id, "tags": tags}
                     if road:
-                        geo[f].append({"type": "way", "id": o.id, "tags": tags, "nodes": ids,
-                                       "geometry": [{"lat": a, "lon": b} for a, b in coords]})
+                        acc[f]["geo"][o.id] = {"type": "way", "id": o.id, "tags": tags, "nodes": ids,
+                                               "geometry": [{"lat": a, "lon": b} for a, b in coords]}
                         if hw == "motorway" and str(t.get("ref", "")).startswith("I"):
-                            motorways[f].append((tags, ids, coords))
+                            acc[f]["mw"][o.id] = (tags, ids, coords)
                 n_ways += 1
-            # Relations (multipolygon buildings with an address) are skipped: nodes and ways cover nearly all
-            # addressed places, and the Overpass build lists them the same way it lists ways.
+            # Relations (multipolygon buildings with an address) are skipped: nodes and ways cover nearly
+            # all addressed places.
+        print(f"  {n_ways} roads and addressed places matched", flush=True)
+    result = {}
+    for f, a in acc.items():
+        pg = shapes[f][0]
+        els = []
         # Interstate exits and mile posts, in the order parse_exits expects: way tags, then its points.
-        for f in shapes:
-            pg = shapes[f][0]
-            els = []
-            for tags, ids, coords in motorways[f]:
-                els.append({"type": "way", "tags": tags})
-                for nid in ids:
-                    if nid in special:
-                        st, ll = special[nid]
-                        if pg.contains(Point(ll[1], ll[0])):
-                            els.append({"type": "node", "id": nid, "lat": ll[0], "lon": ll[1], "tags": st})
-                lats = [c[0] for c in coords]; lons = [c[1] for c in coords]
-                box = (min(lats) - 0.001, max(lats) + 0.001, min(lons) - 0.001, max(lons) + 0.001)
-                for mt, ll in milestones:
-                    if box[0] <= ll[0] <= box[1] and box[2] <= ll[1] <= box[3] and pg.contains(Point(ll[1], ll[0])) \
-                            and _near_way(ll, coords, 40):
-                        els.append({"type": "node", "lat": ll[0], "lon": ll[1], "tags": mt})
-            result[f] = {"main": {"elements": main[f]}, "exits": {"elements": els}, "geo": {"elements": geo[f]}}
-        print(f"  {n_ways} roads and addressed places matched to {len(shapes)} counties", flush=True)
+        for tags, ids, coords in a["mw"].values():
+            els.append({"type": "way", "tags": tags})
+            for nid in ids:
+                if nid in special:
+                    st, ll = special[nid]
+                    if pg.contains(Point(ll[1], ll[0])):
+                        els.append({"type": "node", "id": nid, "lat": ll[0], "lon": ll[1], "tags": st})
+            lats = [c[0] for c in coords]; lons = [c[1] for c in coords]
+            bx = (min(lats) - 0.001, max(lats) + 0.001, min(lons) - 0.001, max(lons) + 0.001)
+            for mt, ll in milestones.values():
+                if bx[0] <= ll[0] <= bx[1] and bx[2] <= ll[1] <= bx[3] and pg.contains(Point(ll[1], ll[0])) \
+                        and _near_way(ll, coords, 40):
+                    els.append({"type": "node", "lat": ll[0], "lon": ll[1], "tags": mt})
+        result[f] = {"main": {"elements": list(a["main"].values())}, "exits": {"elements": els},
+                     "geo": {"elements": list(a["geo"].values())}}
     return result
