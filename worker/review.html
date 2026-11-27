@@ -80,7 +80,7 @@ const TABS = [["draft", "Drafts"], ["scheduled", "Auto-posts"], ["published", "L
 function setHeader(title, showBack, showTabs) {
   $("#htitle").textContent = title; $("#back").style.display = showBack ? "flex" : "none";
   $("#tabs").style.display = showTabs ? "flex" : "none";
-  $("#tabs").innerHTML = TABS.map(([k, v]) => {
+  $("#tabs").innerHTML = TABS.filter(([k]) => k !== "prayers" || (state.list && state.list.prayers)).map(([k, v]) => {
     const n = state.list && state.list[k] ? " · " + state.list[k].length : "";
     return `<button class="tab ${state.tab === k ? "on" : ""}" onclick="state.tab='${k}';location.hash='';route()">${v}${["fixes", "logs", "prayers"].includes(k) ? "" : n}</button>`;
   }).join("");

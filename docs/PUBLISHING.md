@@ -11,7 +11,7 @@ The Worker publishes what you approve on the review page, and the scheduled auto
 | Updates to live posts | Yes. Edits you made on Facebook are detected first and kept. | Yes, but **edits made directly on Facebook can't be detected**: the next update from the bot replaces them. Edit on the review page instead. |
 | Post link on the review page | Always | When Publer returns one |
 | Other networks | Facebook only | Any network you add to `PUBLER_ACCOUNTS` that accepts long posts with an image |
-| Prayer tracker (🙏) | Yes | Only if you also set `FB_PAGE_ID` and `FB_PAGE_TOKEN` |
+| Prayer tracker (🙏, optional, `PRAYERS=on`) | Yes | Only if you also set `FB_PAGE_ID` and `FB_PAGE_TOKEN` |
 | Cost | Free | Your Publer plan |
 
 **Choose Publer if** you can't or won't set up a Meta app, you already pay for Publer, or you want the same posts on several networks. **Stay with Facebook directly if** your page is busy, since storm nights can easily exceed 24 posts. Facebook directly is also the only way to keep edits you make on Facebook.

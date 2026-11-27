@@ -7,7 +7,7 @@ function stmt(sql, args = []) { return { bind: (...a) => stmt(sql, a), _sql: sql
 const DB = { prepare: (s) => stmt(s), async batch(l) { for (const s of l) sq.prepare(s._sql).run(...s._args); return []; } };
 const kv = new Map();
 const SEEN = { async list() { return { keys: [], list_complete: true }; }, async get(k) { return kv.get(k) ?? null; }, async put(k, v) { kv.set(k, String(v)); }, async delete(k) { kv.delete(k); } };
-const env = { DB, SEEN, FB_PAGE_ID: "P", FB_PAGE_TOKEN: "t", DISCORD_WEBHOOK_PRAYERS: "https://discord.com/api/webhooks/1/abc", TIMEZONE: "America/New_York", REVIEW_TOKEN: "rt" };
+const env = { DB, SEEN, PRAYERS: "on", FB_PAGE_ID: "P", FB_PAGE_TOKEN: "t", DISCORD_WEBHOOK_PRAYERS: "https://discord.com/api/webhooks/1/abc", TIMEZONE: "America/New_York", REVIEW_TOKEN: "rt" };
 let comments = ["Prayers 🙏", "praying for everyone", "🙏🙏", "Where is this?", "Prayers for the family", "That road is dangerous", "prayin"];
 const disc = [];
 globalThis.fetch = async (u, init = {}) => { u = String(u);

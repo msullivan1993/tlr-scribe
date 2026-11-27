@@ -49,7 +49,7 @@ Put `/review` behind Cloudflare Access (a custom domain such as `review.example.
 ## 4. Facebook
 Prefer Publer over a Meta app? See [PUBLISHING.md](PUBLISHING.md) for the trade-offs (daily post caps, rate limits) and setup, then skip this step.
 
-Create a Meta app, get a never-expiring Page access token with `pages_manage_posts`, `pages_read_engagement` (and `pages_read_user_content` for the prayer tracker), and save `FB_PAGE_ID` and `FB_PAGE_TOKEN` as Worker secrets. `/privacy` is the privacy page Meta asks for (`PRIVACY_NAME`, `PRIVACY_EMAIL`).
+Create a Meta app, get a never-expiring Page access token with `pages_manage_posts`, `pages_read_engagement` (plus `pages_read_user_content` only if you turn on the optional, just-for-fun prayer tracker with `PRAYERS=on`), and save `FB_PAGE_ID` and `FB_PAGE_TOKEN` as Worker secrets. `/privacy` is the privacy page Meta asks for (`PRIVACY_NAME`, `PRIVACY_EMAIL`).
 
 ## 5. Map images (optional)
 ```powershell
