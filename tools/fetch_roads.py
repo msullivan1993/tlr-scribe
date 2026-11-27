@@ -357,7 +357,7 @@ def parse_geo(js, st):
                 label_pts[lb].append(ll)
     road_lines = []
     for lb in sorted(label_pts, key=str.lower):
-        if re.match(r"^(I|US|KY|SR|WV) \d", lb):
+        if re.match(r"^(I|US|SR|[A-Z]{2}) \d", lb):
             continue  # long numbered routes: a midpoint is meaningless; use INTERSECTIONS / mile points
         pts = label_pts[lb]
         mid = avg(pts)
