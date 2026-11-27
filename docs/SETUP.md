@@ -18,7 +18,7 @@ git push -u origin main
 
 Fill in `local/`:
 - `LOCALRULES.md`: page name, footer, site address, coverage, settings, categories.
-- `channels.csv`, `systems.csv`: one row per TLR system and talkgroup you want watched. `system` and `label` must match the names ThinLine shows. Then fill the refs: put `TLR_HOST` and `TLR_API_KEY` in a `.env` file in the repo root (git-ignored) and run `py tools\fetch_channels.py --hours 168 --fill`. With refs filled, the agent matches channels by ID, so renaming a talkgroup in ThinLine doesn't break the key. `local/channels-seen.csv` lists every channel seen, with its refs, for adding rows by hand.
+- `channels.csv`, `systems.csv`: one row per TLR system and talkgroup you want watched. `system` and `label` must match the names ThinLine shows. Then fill the refs: put `TLR_HOST` and `TLR_API_KEY` in a `.env` file in the repo root (git-ignored) and run `py tools\fetch_channels.py --hours 168 --fill`. That only finds channels with recent calls; for every channel, export the list with `tools/talkgroups.sql` (read-only, in psql) and run `py tools\fetch_channels.py --from C:\temp\talkgroups.csv --fill`. With refs filled, the agent matches channels by ID, so renaming a talkgroup in ThinLine doesn't break the key. `local/channels-seen.csv` lists every channel seen, with its refs, for adding rows by hand.
 - `departments.csv`: build from TLR tone sets with `tools/tonesets.sql` (run it read-only), then tidy by hand.
 - `places.md`, `units.md`, `codes.md`: start small; add what you learn from real posts.
 - `counties.txt`, then `py tools\fetch_roads.py` to build `local/roads/` (slow: Overpass is rate-limited).

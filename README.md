@@ -37,7 +37,7 @@ Claude scheduled task ── scribe connector (MCP) ┘
 | `local/` | **Your instance only** (not in this repo): coverage, settings, channels, departments, places, roads |
 | `worker/` | The Cloudflare Worker (`worker.js`; `review.html` is inlined by `tools/build_worker.py`) |
 | `imageworker/` | Optional map image Worker |
-| `tools/` | Road builder (`fetch_roads.py`), road sound-alike matcher (`roadmatch.py`), TLR tone set export |
+| `tools/` | Road builder (`fetch_roads.py`), road sound-alike matcher (`roadmatch.py`), channel ref filler (`fetch_channels.py`), TLR database exports (`tonesets.sql`, `talkgroups.sql`) |
 | `tests/` | `node tests/run-all.mjs` runs the Worker tests against an in-memory D1 |
 
 ## Your responsibility

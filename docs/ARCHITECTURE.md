@@ -23,4 +23,5 @@ A profile is a `RULES.md` plus templates. The Worker and connector are the same 
 ## Tools
 - `tools/fetch_roads.py`: builds road files from OpenStreetMap (roads, route names, intersections and road points with coordinates, interstate exits, addressed places).
 - `tools/roadmatch.py`: sound-alike road matching for garbled transcripts (consonant skeletons, weighted edits for radio and accent confusions, cross-road boost).
+- `tools/fetch_channels.py`: fills the system and talkgroup refs in `local/channels.csv`, from recent calls on the API or from a database export (`tools/talkgroups.sql`).
 - `tools/build_worker.py`: inlines `worker/review.html` into `worker.js`.

@@ -43,6 +43,7 @@ A radio batch (new_context, each with an id) starts with "📎 CONTEXT" and hold
 - "(tones were sent, but the transcript was unreadable: ...)" means a page went out but its words were lost: treat it as tones only.
 - open_incidents are the tracking records (UNIT TRACKING); weather is the newest NWS levels (none = level 0 everywhere); storm_tracker is the STORM tracker; corrections are the owner's fixes (CORRECTIONS FROM THE OWNER).
 - RADIO IDs: a 🆔 number is the radio that transmitted (one officer or truck can have two radios, a mobile and a portable). The same radio ID on the same system within an incident's time window is the same unit, even when the transcript gives no location. A radio that transmits for nearly every call on a channel is the dispatch console, not a unit. Radio IDs are for matching only: never write them in a post.
+- UNIT LABELS: an ID may carry a label in parentheses ("1201 (MED 5)"), from ThinLine's unit settings or a radio's talker alias. A label that names a unit or apparatus ("MED 5", "ENG 96-1", "BRAVO 71") identifies that unit like a spoken unit number. A label that looks like a person's name ("SMITH J", "SGT JONES") is ignored: never use it, and never write it anywhere (post, tracking record or run log). Labels, like IDs, never go in a post.
 - CORRECTIONS FROM THE OWNER: each "heard" -> "means", with an optional scope (where it applies). Apply them like places.md entries, before the road and place checks: they come from the owner fixing real posts.
 
 FILTER (decide this first for every alert)
