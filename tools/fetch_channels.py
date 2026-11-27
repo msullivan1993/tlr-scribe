@@ -13,6 +13,9 @@ capability) in the environment or in a git-ignored .env file in the repo root. R
   py tools\\fetch_channels.py --hours 168     look back a week (quiet channels only appear when they had calls)
   py tools\\fetch_channels.py --fill          also fill refs in local/channels.csv (existing refs are kept)
   py tools\\fetch_channels.py --fill --force  overwrite existing refs too
+  py tools\\fetch_channels.py --from C:\\temp\\talkgroups.csv --fill
+                                             fill from a full list exported from the TLR database
+                                             (tools/talkgroups.sql), including channels with no recent calls
 
 Pages are fetched --delay seconds apart (default 1.5) and a 429 rate limit waits and retries.
 Only channels that had a call in the window appear. Run it again later (or with more --hours) for the rest.
@@ -105,24 +108,34 @@ def fetch(host, key, since_ms, max_pages, delay):
 
 def main():
     env = load_env()
-    host = (env.get("TLR_HOST") or "").rstrip("/")
-    key = (env.get("TLR_API_KEY") or "").strip()
-    if not host or not key:
-        sys.exit("Set TLR_HOST and TLR_API_KEY in the environment or in .env (never commit .env).")
+    src = arg("--from")
     hours = float(arg("--hours", "24"))
     max_pages = int(arg("--max-pages", "400"))
     local = Path("local")
     local.mkdir(exist_ok=True)
 
-    print(f"Reading calls from the last {hours:g} h ...")
-    seen = fetch(host, key, int((time.time() - hours * 3600) * 1000), max_pages, float(arg("--delay", "1.5")))
-    rows = sorted(seen.values(), key=lambda e: (e["system"].lower(), e["label"].lower()))
-    out = local / "channels-seen.csv"
-    with out.open("w", newline="", encoding="utf-8") as f:
-        w = csv.DictWriter(f, fieldnames=["system", "label", "name", "system_ref", "talkgroup_ref", "calls"], lineterminator="\n")
-        w.writeheader()
-        w.writerows(rows)
-    print(f"{len(rows)} channels -> {out}")
+    if src:
+        # A full system/talkgroup list exported from the TLR database (tools/talkgroups.sql)
+        with open(src, newline="", encoding="utf-8-sig") as f:
+            rows = [{"system": r.get("system", ""), "label": r.get("label", ""), "name": r.get("name", ""),
+                     "system_ref": str(r.get("system_ref", "")).strip(), "talkgroup_ref": str(r.get("talkgroup_ref", "")).strip(), "calls": ""}
+                    for r in csv.DictReader(f)]
+        rows = [r for r in rows if r["system_ref"] and r["talkgroup_ref"]]
+        print(f"{len(rows)} talkgroups read from {src}")
+    else:
+        host = (env.get("TLR_HOST") or "").rstrip("/")
+        key = (env.get("TLR_API_KEY") or "").strip()
+        if not host or not key:
+            sys.exit("Set TLR_HOST and TLR_API_KEY in the environment or in .env (never commit .env).")
+        print(f"Reading calls from the last {hours:g} h ...")
+        seen = fetch(host, key, int((time.time() - hours * 3600) * 1000), max_pages, float(arg("--delay", "1.5")))
+        rows = sorted(seen.values(), key=lambda e: (e["system"].lower(), e["label"].lower()))
+        out = local / "channels-seen.csv"
+        with out.open("w", newline="", encoding="utf-8") as f:
+            w = csv.DictWriter(f, fieldnames=["system", "label", "name", "system_ref", "talkgroup_ref", "calls"], lineterminator="\n")
+            w.writeheader()
+            w.writerows(rows)
+        print(f"{len(rows)} channels -> {out}")
 
     if "--fill" not in sys.argv:
         return
@@ -176,7 +189,7 @@ def main():
     for a in ambiguous:
         print("  ambiguous (fill by hand from channels-seen.csv):", a)
     for m in missing:
-        print("  not seen in the window:", m)
+        print("  not found" + (" in the export:" if src else " in the window:"), m)
 
 
 if __name__ == "__main__":
