@@ -21,6 +21,7 @@ import json
 import os
 import sys
 import time
+import urllib.error
 import urllib.parse
 import urllib.request
 from pathlib import Path
@@ -55,12 +56,19 @@ def fetch(host, key, since_ms, max_pages):
     for page in range(max_pages):
         q = urllib.parse.urlencode({"dateFrom": since_ms, "limit": 200, "offset": page * 200})
         req = urllib.request.Request(f"{host}/api/public/v1/transcripts?{q}",
-                                     headers={"Authorization": f"Bearer {key}", "Accept": "application/json"})
+                                     headers={"Authorization": f"Bearer {key}", "Accept": "application/json",
+                                              # Cloudflare blocks Python's default "Python-urllib" agent with a 403
+                                              "User-Agent": "tlr-scribe-fetch-channels/1.0 (+https://github.com/msullivan1993/tlr-scribe)"})
         for attempt in range(3):
             try:
                 with urllib.request.urlopen(req, timeout=30) as r:
                     data = json.loads(r.read().decode("utf-8"))
                 break
+            except urllib.error.HTTPError as e:
+                body = e.read().decode("utf-8", "replace")[:300]
+                sys.exit(f"ThinLine returned HTTP {e.code}: {body}\n"
+                         "401/403 from ThinLine: check the key has the Transcripts capability. "
+                         "A Cloudflare HTML page instead: a WAF or bot rule is blocking the request.")
             except Exception as e:
                 if attempt == 2:
                     sys.exit(f"ThinLine request failed: {e}")
