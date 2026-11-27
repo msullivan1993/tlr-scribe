@@ -1,5 +1,7 @@
 # Setting up TLR Scribe
 
+Prefer to be walked through it? Give [AI-SETUP.md](AI-SETUP.md) to your AI assistant. Running the agent somewhere other than Claude: [RUNTIMES.md](RUNTIMES.md).
+
 You need: a ThinLine Radio server with API access, a Cloudflare account (Workers free plan works; D1 and KV included), a Claude plan with scheduled tasks, a GitHub account, and (for Facebook) a Facebook Page plus a Meta app. Commands below are PowerShell; on Linux or macOS use `cp`/`python3` equivalents.
 
 ## 1. Your instance repository

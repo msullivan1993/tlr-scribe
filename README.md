@@ -24,9 +24,11 @@ Claude scheduled task ── scribe connector (MCP) ┘
 - Nothing is published unless you publish it on the review page, or you turn on scheduled auto-posts for the categories you choose.
 
 ## Get started
+- [docs/AI-SETUP.md](docs/AI-SETUP.md): hand this to your AI assistant (Claude, ChatGPT, Gemini...) and it walks you through setup.
 - [docs/SETUP.md](docs/SETUP.md): deploy the Workers, create your instance repo and the scheduled task.
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): what each part does.
 - [docs/UPDATING.md](docs/UPDATING.md): pull core updates into your instance without touching your local files.
+- [docs/RUNTIMES.md](docs/RUNTIMES.md): run the agent on Claude (the tested setup) or another AI platform.
 
 ## Repository layout
 | Path | What |

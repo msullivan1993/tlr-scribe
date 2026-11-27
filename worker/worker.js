@@ -1049,7 +1049,7 @@ async function fireClaude(env, meta, alert, light = false) {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      text: `New draft created from a ThinLine alert (${meta.talkgroupLabel || "unknown talkgroup"}, ${new Date(Number(alert.timestamp) || Date.now()).toISOString()}).`,
+      text: `New scanner traffic to process (${meta.talkgroupLabel || "unknown talkgroup"}, ${new Date(Number(alert.timestamp) || Date.now()).toISOString()}). Wake-up notice only.`,
     }),
   });
   console.log(useLight ? "claude fire (light)" : "claude fire", res.status, await res.text());
