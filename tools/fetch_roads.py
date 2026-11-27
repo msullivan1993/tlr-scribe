@@ -22,8 +22,13 @@ so they are never lost. One per line:
   exit: I 64 191 = US 23; Catlettsburg                                 (an interstate exit the map is missing)
   # comments are ignored
 
-Uses only the Python standard library. Run from the repository root:
-  py tools\\fetch_roads.py               (all counties below)
+Uses only the Python standard library (the faster --pbf mode needs: py -m pip install osmium shapely).
+Run from the repository root:
+  py tools\\fetch_roads.py               (all counties in local/counties.txt, from the Overpass API: slow)
+  py tools\\fetch_roads.py --pbf C:\\osm\\kentucky-latest.osm.pbf --pbf C:\\osm\\ohio-latest.osm.pbf
+                                       (FAST: from downloaded Geofabrik state files, one --pbf per state;
+                                        https://download.geofabrik.de/north-america/us.html)
+  py tools\\fetch_roads.py --pbf ... --out C:\\temp\\roads-test   (write somewhere else, to compare first)
   py tools\\fetch_roads.py Cabell:WV     (just one)
   py tools\\fetch_roads.py --manual-only (re-merge manual files without downloading again)
   py tools\\fetch_roads.py --geo-only    (keep the lists, add/refresh ROAD POINTS and INTERSECTIONS only)
@@ -41,7 +46,8 @@ from datetime import date
 from pathlib import Path
 
 # Counties to build come from local/counties.txt, one per line: Name:ST:FIPS (e.g. Boyd:KY:21019).
-# The FIPS code is the TLR system ID. Names repeat across states, so FIPS is what selects the county.
+# The FIPS code is the 5-digit county code (state + county), unrelated to your TLR system IDs. Names repeat
+# across states, so FIPS is what selects the county.
 def load_counties():
     for p in (Path("local/counties.txt"), Path("counties.txt")):
         if p.exists():
@@ -154,7 +160,15 @@ def norm_ref(ref, st):
     return out
 
 
+PBF = None  # {fips: {"main", "exits", "geo"}} when --pbf files are given (tools/pbf_extract.py)
+
+
 def fetch(county, st, fips, query=None):
+    if PBF is not None:
+        kind = "exits" if query is EXIT_QUERY else "geo" if query is GEO_QUERY else "main"
+        if fips not in PBF:
+            raise RuntimeError(f"{county} County, {st} (FIPS {fips}) is not in the --pbf file(s)")
+        return PBF[fips][kind]
     q = (query or QUERY).format(fips=fips)
     data = urllib.parse.urlencode({"data": q}).encode()
     last = None
@@ -483,7 +497,23 @@ def write(path, county, st, roads, refs, places, pairs, pois, exits=None, point_
 
 
 def main():
-    args = [a for a in sys.argv[1:] if not a.startswith("--")]
+    global PBF
+    argv = sys.argv[1:]
+    pbf_files = []
+    while "--pbf" in argv:
+        i = argv.index("--pbf")
+        if i + 1 >= len(argv):
+            sys.exit("--pbf needs a file, e.g. --pbf C:\\osm\\kentucky-latest.osm.pbf")
+        pbf_files.append(argv[i + 1])
+        del argv[i:i + 2]
+    out_override = None
+    if "--out" in argv:
+        i = argv.index("--out")
+        if i + 1 >= len(argv):
+            sys.exit("--out needs a folder")
+        out_override = argv[i + 1]
+        del argv[i:i + 2]
+    args = [a for a in argv if not a.startswith("--")]
     manual_only = "--manual-only" in sys.argv
     exits_only = "--exits-only" in sys.argv  # keep the road lists, refetch only interstate exits and points (fast)
     geo_only = "--geo-only" in sys.argv  # keep the road lists, fetch only ROAD POINTS and INTERSECTIONS
@@ -500,7 +530,17 @@ def main():
         sys.exit("No counties. Add lines like Boyd:KY:21019 to local/counties.txt")
     # local/roads is the instance layout; plain roads/ is kept for older checkouts
     outdir = Path("local/roads") if Path("local").is_dir() or not Path("roads").is_dir() else Path("roads")
-    (outdir / "manual").mkdir(parents=True, exist_ok=True)
+    manual_dir = outdir / "manual"
+    if out_override:  # e.g. --out C:\temp\roads-test, to compare a new build with the current files
+        outdir = Path(out_override)
+        outdir.mkdir(parents=True, exist_ok=True)
+    manual_dir.mkdir(parents=True, exist_ok=True)
+    if pbf_files:
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        import pbf_extract
+        t0 = time.time()
+        PBF = pbf_extract.extract(pbf_files, picks, SKIP_HIGHWAY)
+        print(f"Read the file(s) in {int(time.time() - t0)} s.\n")
     for county, st, fips in picks:
         slug = f"{county.lower().replace(' ', '-')}-{st.lower()}"
         path = outdir / f"{slug}.txt"
@@ -537,14 +577,14 @@ def main():
                 exits = defaultdict(dict)
                 point_text = []
                 if any(r.startswith("I ") for r in refs):
-                    time.sleep(5)
+                    time.sleep(0 if PBF is not None else 5)
                     try:
                         points = new_points()
                         exits = parse_exits(fetch(county, st, fips, EXIT_QUERY), points)
                         point_text = point_lines(points)
                     except Exception as e:
                         print(f"  exits not fetched ({e}); the road list is still written")
-                time.sleep(5)
+                time.sleep(0 if PBF is not None else 5)
                 try:
                     geo = parse_geo(fetch(county, st, fips, GEO_QUERY), st)
                 except Exception as e:
@@ -557,14 +597,16 @@ def main():
                 print(f"  FAILED: no roads returned for FIPS {fips}")
                 failed.append(f"{county}:{st}")
                 continue
-        m = merge_manual(outdir / "manual" / f"{slug}.txt", st, roads, refs, places, pairs, pois, exits)
+        m = merge_manual(manual_dir / f"{slug}.txt", st, roads, refs, places, pairs, pois, exits)
         write(path, county, st, roads, refs, places, pairs, pois, exits, point_text, geo)
         print(f"  {len(roads)} roads, {len(refs)} routes, {sum(1 for r in pairs if pairs[r])} named routes, "
               f"{len(places)} places, {len(pois)} addressed places, {sum(len(v) for v in exits.values())} interstate exits, "
               f"{len(point_text)} interstate points, "
               f"{len(geo[0]) if geo else 0} road points, {len(geo[1]) if geo else 0} intersections, "
               f"{m} manual lines -> {path}")
-        if exits_only or geo_only:
+        if PBF is not None:
+            pass
+        elif exits_only or geo_only:
             time.sleep(3)
         elif not manual_only:
             time.sleep(10)  # be polite to the public Overpass servers

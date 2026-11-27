@@ -111,3 +111,11 @@ Two exports make `local/` much quicker to fill: every system and talkgroup with 
 
 If a query says a column doesn't exist, your ThinLine version names it differently: run `\d systems` and `\d talkgroups` in psql and adjust the column names in the `.sql` file (or ask your AI assistant to).
 
+
+## Faster road files (optional)
+`fetch_roads.py` normally asks the public Overpass API county by county, which can take hours. With downloaded OpenStreetMap state files it reads everything locally in minutes:
+1. `py -m pip install osmium shapely`
+2. Download each state you cover from [Geofabrik](https://download.geofabrik.de/north-america/us.html) (the `.osm.pbf` file, e.g. `kentucky-latest.osm.pbf`).
+3. `py tools\fetch_roads.py --pbf C:\osm\kentucky-latest.osm.pbf --pbf C:\osm\ohio-latest.osm.pbf` (one `--pbf` per state; add county names like `Boyd:KY` to build only those).
+4. To compare with files you already have before replacing them, add `--out C:\temp\roads-test`.
+Your `local/roads/manual/` additions are merged in either way.
