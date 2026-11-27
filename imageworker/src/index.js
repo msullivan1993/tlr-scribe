@@ -73,12 +73,17 @@ async function censusGeocode(q) {
 // Pick a location: ask Mapbox (and, for street addresses, the Census geocoder) and keep a result inside the
 // expected county. Returns { pick, candidates, fallback } where fallback means "no trustworthy pin: show the
 // town or county instead".
-// "9500 West US 60, Carter County, KY": a direction word before a route number confuses geocoders ("West" ->
-// West Virginia), and the Census geocoder wants a town, not a county. Clean the route and offer a version with
-// the town from line 3 ("Grahn, Carter Co, KY" -> "9500 US Highway 60, Grahn, KY").
+// "9500 West US 60, Carter County, KY": a direction word in front of a route number confuses geocoders ("West" ->
+// West Virginia), but the direction matters (Grayson has both East and West US 60 addresses). Move it behind
+// the route, the way postal addresses write it: "9500 US Highway 60 W". The Census geocoder also wants a town,
+// not a county, so withTown() offers a version with the community from line 3.
+const DIRS = { west: "W", east: "E", north: "N", south: "S", w: "W", e: "E", n: "N", s: "S" };
 function cleanRoute(q) {
-  return String(q).replace(/\b(?:West|East|North|South|W|E|N|S)\.?\s+(?=(?:US|U\.S\.|KY|SR|OH|WV|State Route|Highway|Hwy|Route)\b)/gi, "")
-    .replace(/\bUS[- ]?(\d+)/gi, "US Highway $1");
+  return String(q)
+    .replace(/\b(West|East|North|South|W|E|N|S)\.?\s+(US|U\.S\.|KY|SR|OH|WV|State Route|Highway|Hwy|Route)[- ]?(\d+[A-Z]?)\b(?!\s+(?:W|E|N|S|West|East|North|South)\b)/gi,
+      (m, d, r, n) => `${r} ${n} ${DIRS[d.toLowerCase()]}`)
+    .replace(/\b(US|U\.S\.)[- ]?(\d+)/gi, "US Highway $2")
+    .replace(/\b(US Highway \d+[A-Z]?|KY \d+|SR \d+|State Route \d+)\s+(West|East|North|South)\b/gi, (m, r, d) => `${r} ${DIRS[d.toLowerCase()]}`);
 }
 function withTown(q, l3) {
   const m = String(l3 || "").match(/^\s*([^,]+?)\s*,\s*[^,]+?\s+(?:Co|County|Parish|Borough)\.?\s*,\s*([A-Za-z]{2})\s*$/);
