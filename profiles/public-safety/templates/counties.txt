@@ -1,0 +1,3 @@
+# Counties for tools/fetch_roads.py, one per line: Name:ST:FIPS
+# The FIPS code is the 5-digit county code (state + county), e.g. Boyd County, KY = 21019.
+# Boyd:KY:21019

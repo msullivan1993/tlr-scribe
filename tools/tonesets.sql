@@ -1,0 +1,3 @@
+-- Lists every tone set configured in TLR, with its system and talkgroup.
+-- Read-only. Writes C:\temp\tonesets.csv (create C:\temp first).
+\copy (SELECT s."label" AS system, t."label" AS talkgroup, t."name" AS talkgroup_name, ts->>'label' AS tone_set, NULLIF(ts->>'geoCity','') AS geo_city, NULLIF(ts->>'locationContext','') AS location_context FROM "talkgroups" t JOIN "systems" s ON s."systemId" = t."systemId" CROSS JOIN LATERAL json_array_elements(CASE WHEN t."toneSets" ~ '^\s*\[' THEN t."toneSets"::json ELSE '[]'::json END) AS ts ORDER BY 1, 2, 4) TO 'C:/temp/tonesets.csv' WITH (FORMAT csv, HEADER)

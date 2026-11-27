@@ -1,0 +1,10 @@
+name = "tlr-scribe-imageworker"   # already have one under another name? set the Workers Builds deploy command to: npx wrangler deploy --name <your-worker>
+main = "src/index.js"
+compatibility_date = "2025-01-01"
+
+# Fonts are bundled as binary data; the resvg .wasm is bundled as a WebAssembly module.
+rules = [
+  { type = "Data", globs = ["**/*.ttf", "**/*.png"], fallthrough = true },
+]
+
+# Secrets (set in the Cloudflare dashboard, not here): MAPBOX_TOKEN, IMAGE_KEY

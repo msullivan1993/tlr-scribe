@@ -1,0 +1,4 @@
+CODES (never write a code in a post; translate known codes into plain words)
+USING CODES IN UPDATES: when a known code below tells you what happened on a posted incident, write it in plain language in the update ("10-97" -> "Units arrived on scene"; "10-98" -> "Units cleared the scene"). Only for codes listed for that channel's area; an unknown code is never translated or guessed.
+Pick the list by the channel's county. Fire and EMS mostly use plain language; codes are mainly law traffic. The same code can mean different things in different states (in Ohio "code 4" is often an injury crash; in Kentucky it means all is well): always decide by the channel's state.
+- <County or state>: <code list>. Mark codes that are NEVER POSTED (domestic, juvenile, sexual offense, suicide, mental) and SERIOUS (DOA, homicide, coroner).

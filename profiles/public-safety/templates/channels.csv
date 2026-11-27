@@ -1,0 +1,3 @@
+system,label,role,can_start,default_place,also_matches
+Example County ST Public Safety,ECFIRE,"fire paging (dispatch tones out departments)",yes,"place from transcript, else Example County, ST",Example Fire Dispatch
+Example County ST Public Safety,ECEMS,EMS dispatch and updates,NO (updates only),"Example County, ST",

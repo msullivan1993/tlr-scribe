@@ -1,0 +1,29 @@
+# TLR Scribe Worker. Deploy from this folder: npx wrangler deploy --name <your-worker>
+# Create the bindings first (once):
+#   npx wrangler d1 create scribe-db        -> paste its database_id below
+#   npx wrangler kv namespace create SEEN   -> paste its id below
+# Secrets: npx wrangler secret put <NAME> (see the header of worker.js), never in this file.
+name = "tlr-scribe"
+main = "worker.js"
+compatibility_date = "2026-11-01"
+
+[triggers]
+crons = ["* * * * *"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "scribe-db"
+database_id = "<your-d1-database-id>"
+
+[[kv_namespaces]]
+binding = "SEEN"
+id = "<your-kv-namespace-id>"
+
+[vars]
+PAGE_NAME = "Example Scanner Page"
+TIMEZONE = "America/New_York"
+POLL = "on"
+CONTEXT = "on"
+# TLR_HOST = "https://scanner.example.com"
+# REVIEW_URL = "https://review.example.com"
+# WX_COUNTIES = "KYC019=Boyd County, KY"

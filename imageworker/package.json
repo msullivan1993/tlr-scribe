@@ -1,0 +1,8 @@
+{
+  "name": "tlr-scribe-imageworker",
+  "private": true,
+  "type": "module",
+  "scripts": { "deploy": "wrangler deploy", "test": "node test/render-test.mjs" },
+  "dependencies": { "@resvg/resvg-wasm": "2.6.2" },
+  "devDependencies": { "wrangler": "^4.0.0" }
+}

@@ -1,0 +1,3 @@
+system,department,type,stations,units,tone_names,notes
+Example County ST Public Safety,Example City FD,Fire,10,"Engine 10; Truck 10",Example City FD (Sta. 10),
+Example County ST Public Safety,Example County EMS,EMS,,"Med 1; Med 2",EC EMS Med 1; EC EMS Med 2,

@@ -1,0 +1,355 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f1115">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>__PAGE_NAME__ · Review</title>
+<style>
+:root{--bg:#0f1115;--card:#181b22;--card2:#14171d;--line:#2a2f38;--line2:#22262e;--text:#e8eaed;--muted:#9aa1ab;--blue:#2f6fed;--red:#ff8a85;--fire:#ff6b66;--crash:#f5a623;--green:#8fd19e}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Inter,sans-serif;-webkit-text-size-adjust:100%}
+button,input,select,textarea{font:inherit;color:inherit}
+a{color:inherit}
+.wrap{max-width:640px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column}
+header{position:sticky;top:0;z-index:5;background:var(--bg);padding:14px 16px 10px;border-bottom:1px solid var(--line2);display:flex;align-items:center;gap:10px}
+header h1{margin:0;font-size:22px;font-weight:700;flex:1}
+header .sub{font-size:12px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
+.iconbtn{width:44px;height:44px;border-radius:22px;border:1px solid var(--line);background:var(--card);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0}
+.tabs{display:flex;gap:8px;padding:10px 16px;overflow-x:auto}
+.tab{height:36px;padding:0 14px;border-radius:18px;border:1px solid var(--line);background:transparent;color:#c9ced6;white-space:nowrap;cursor:pointer}
+.tab.on{background:var(--text);color:var(--bg);border-color:var(--text);font-weight:600}
+main{flex:1;padding:6px 16px 24px;display:flex;flex-direction:column;gap:12px}
+.card{display:flex;gap:12px;padding:12px;border-radius:14px;background:var(--card);border:1px solid var(--line);text-decoration:none;cursor:pointer}
+.card.new{border-color:var(--crash)}
+.thumb{width:72px;height:72px;border-radius:10px;object-fit:cover;flex-shrink:0;background:var(--card2)}
+.meta{display:flex;flex-direction:column;gap:3px;min-width:0}
+.kicker{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.title{font-size:16px;font-weight:600;line-height:1.25}
+.small{font-size:13px;color:var(--muted)}
+.empty{padding:40px 10px;text-align:center;color:var(--muted)}
+.btn{height:48px;border-radius:12px;border:1px solid var(--line);background:var(--card);font-weight:600;cursor:pointer;padding:0 14px}
+.btn.primary{background:var(--blue);border-color:var(--blue);color:#fff;height:52px;font-size:17px}
+.btn.danger{color:var(--red);border-color:#3a2424}
+.btn:disabled{opacity:.5}
+.row{display:flex;gap:10px}
+.row>*{flex:1}
+textarea{width:100%;min-height:300px;padding:12px;border-radius:12px;border:1px solid var(--line);background:var(--card);line-height:1.45;resize:vertical}
+input,select{width:100%;height:48px;padding:0 12px;border-radius:12px;border:1px solid var(--line);background:var(--card)}
+textarea:focus,input:focus,select:focus{outline:2px solid #4c8dff;outline-offset:-2px}
+label{font-size:14px;font-weight:500;display:flex;flex-direction:column;gap:6px}
+h2{margin:6px 0 0;font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.chip{display:inline-flex;align-items:center;height:26px;padding:0 10px;border-radius:13px;background:var(--card);border:1px solid var(--line);font-size:12px;color:#c9ced6;margin:0 6px 6px 0}
+.mapimg{width:100%;border-radius:12px;display:block;background:var(--card2);min-height:120px}
+.seg{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px;padding:4px;border-radius:12px;background:var(--card);border:1px solid var(--line)}
+.seg button{height:40px;border-radius:9px;border:none;background:transparent;color:#c9ced6;font-weight:600;cursor:pointer}
+.seg button.on{background:var(--blue);color:#fff}
+.box{padding:14px;border-radius:12px;background:var(--card2);border:1px solid var(--line2);display:flex;flex-direction:column;gap:10px}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#232833;border:1px solid var(--line);padding:12px 16px;border-radius:12px;max-width:90vw;z-index:20;display:none}
+.log{white-space:pre-wrap;font-size:13px;padding:12px;border-radius:12px;background:var(--card);border:1px solid var(--line)}
+.ver{font-size:13px;color:var(--muted);border-top:1px solid var(--line2);padding-top:8px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <button class="iconbtn" id="back" aria-label="Back" style="display:none" onclick="goBack()"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg></button>
+    <div style="flex:1"><div class="sub">__PAGE_NAME__</div><h1 id="htitle">Drafts</h1></div>
+    <button class="iconbtn" aria-label="Refresh" onclick="route()"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v6h-6"/></svg></button>
+  </header>
+  <div class="tabs" id="tabs"></div>
+  <main id="main"><div class="empty">Loading…</div></main>
+</div>
+<div class="toast" id="toast" role="status"></div>
+<script>
+const API = location.pathname.replace(/\/+$/, "") + "/api/";
+const $ = (s) => document.querySelector(s);
+const esc = (x) => String(x == null ? "" : x).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+let state = { tab: "draft", list: null, post: null };
+function toast(msg, ms) { const t = $("#toast"); t.textContent = msg; t.style.display = "block"; clearTimeout(t._h); t._h = setTimeout(() => (t.style.display = "none"), ms || 3500); }
+async function api(path, body) {
+  const r = await fetch(API + path, body ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) } : {});
+  const j = await r.json().catch(() => ({ error: "bad response" }));
+  if (!r.ok || j.error) throw new Error(j.error || ("HTTP " + r.status));
+  return j;
+}
+function imgSrc(image) { if (!image) return ""; const q = new URLSearchParams(image); return API + "image?" + q.toString(); }
+const TABS = [["draft", "Drafts"], ["scheduled", "Auto-posts"], ["published", "Live"], ["prayers", "🙏"], ["fixes", "Fixes"], ["logs", "Run logs"]];
+function setHeader(title, showBack, showTabs) {
+  $("#htitle").textContent = title; $("#back").style.display = showBack ? "flex" : "none";
+  $("#tabs").style.display = showTabs ? "flex" : "none";
+  $("#tabs").innerHTML = TABS.map(([k, v]) => {
+    const n = state.list && state.list[k] ? " · " + state.list[k].length : "";
+    return `<button class="tab ${state.tab === k ? "on" : ""}" onclick="state.tab='${k}';location.hash='';route()">${v}${["fixes", "logs", "prayers"].includes(k) ? "" : n}</button>`;
+  }).join("");
+}
+async function route() {
+  const m = location.hash.match(/^#post-(\d+)(\/fix)?$/);
+  try {
+    if (m) return m[2] ? await showFix(Number(m[1])) : await showPost(Number(m[1]));
+    if (state.tab === "logs") return await showLogs();
+    if (state.tab === "prayers") return await showPrayers();
+    if (state.tab === "fixes") return await showFixes();
+    await showList();
+  } catch (e) { $("#main").innerHTML = `<div class="empty">${esc(e.message)}</div>`; }
+}
+window.addEventListener("hashchange", () => { state.busy = false; route(); });
+// AUTO-REFRESH: every 20 s while the page is visible, and right away when you come back to it.
+// Lists redraw only when something changed. An open post redraws when the bot or Facebook changed it,
+// unless you are editing it: then a banner offers the newer version instead of wiping your edits.
+// The fix screen is never refreshed underneath you.
+async function autoRefresh() {
+  if (document.hidden || state.busy) return;
+  const m = location.hash.match(/^#post-(\d+)(\/fix)?$/);
+  try {
+    if (m) { if (!m[2]) await showPost(Number(m[1]), true); }
+    else if (state.tab === "logs") await showLogs(true);
+    else if (state.tab === "prayers") await showPrayers(true);
+    else if (state.tab !== "fixes") await showList(true);
+  } catch (e) {}
+}
+setInterval(autoRefresh, 20000);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) autoRefresh(); });
+// Back goes UP one level (fix -> post -> list), never through browser history:
+// after a save or publish the history can hold the same post twice.
+function goBack() {
+  const m = location.hash.match(/^#post-(\d+)(\/fix)?$/);
+  location.hash = m && m[2] ? "#post-" + m[1] : "";
+}
+
+async function showList(quiet) {
+  const list = await api("list");
+  const sig = JSON.stringify([state.tab, list]);
+  if (quiet && sig === state.listSig) return;
+  state.list = list; state.listSig = sig;
+  setHeader({ draft: "Drafts", scheduled: "Auto-posts", published: "Live posts" }[state.tab], false, true);
+  const items = state.list[state.tab] || [];
+  const fb = state.list.facebook === "connected" ? "" : `<div class="box small">Facebook is not connected yet, so Publish is off.</div>`;
+  if (!items.length) { $("#main").innerHTML = fb + `<div class="empty">Nothing here right now.</div>`; return; }
+  $("#main").innerHTML = fb + items.map((p) => {
+    const lines = String(p.text).split("\n");
+    const kick = p.state === "scheduled" ? `<span style="color:var(--fire)">Auto-post at ${esc(p.auto_post_at)}</span>`
+      : p.state === "failed" ? `<span style="color:var(--red)">Publish failed</span>`
+      : p.state === "published" ? `Published ${esc(p.published)}${p.prayers != null ? ` · 🙏 ${p.prayers}/${p.comments}` : ""}` : `${p.owner_edited ? "Edited by you · " : ""}Updated ${esc(p.updated)}`;
+    const thumb = p.image ? `<img class="thumb" loading="lazy" alt="" src="${imgSrc(p.image)}">` : `<div class="thumb"></div>`;
+    return `<a class="card" href="#post-${p.id}">${thumb}<div class="meta"><span class="kicker">${kick}</span><span class="title">${esc(lines[0])}</span><span class="small">${esc((lines[1] || "").split(" · ")[0])}</span></div></a>`;
+  }).join("");
+}
+
+// X VERSION of a post: the header (type · place), the location/time line, then as many whole sentences
+// of the summary as fit in 280 (X counts an emoji as 2). No links. Updates go out as replies (Copy update).
+function xLen(t) { let n = 0; for (const ch of t) n += ch.codePointAt(0) > 0x2fff ? 2 : 1; return n; }
+function xText(text) {
+  const lines = String(text).split("\n");
+  const head = [lines[0], lines[1]].filter(Boolean).join("\n");
+  const body = (lines.slice(2).find((l) => l.trim() && !/^(🔄|UPDATE)/.test(l.trim())) || "").trim();
+  let out = head;
+  for (const sent of body.match(/[^.!?]+[.!?]+(\s|$)|[^.!?]+$/g) || []) {
+    const next = out + (out === head ? "\n\n" : " ") + sent.trim();
+    if (xLen(next) > 280) break;
+    out = next;
+  }
+  return out;
+}
+function xUpdate(text) {
+  const ups = String(text).split("\n").filter((l) => /^(🔄\s*)?UPDATE\b/i.test(l.trim()));
+  if (!ups.length) return "";
+  let u = ups[ups.length - 1].trim();
+  while (xLen(u) > 275) u = u.replace(/\s*\S+$/, "") + "…";
+  return u;
+}
+
+async function showPost(id, quiet) {
+  const p0 = await api("post?id=" + id);
+  if (quiet && state.post && state.post.id === p0.id) {
+    const old = state.post;
+    if (p0.version === old.version && p0.state === old.state) return;
+    const t = $("#txt");
+    const editing = t && (t.value !== old.text || document.activeElement === t);
+    if (editing || state.busy) {
+      const n = $("#newer");
+      if (n) { n.style.display = "block"; n.textContent = `Newer version (v${p0.version}, ${p0.last_by}) · tap to load it. Your unsaved edits will be lost.`; }
+      return;
+    }
+    toast(`Updated by ${p0.last_by}`);
+  }
+  const p = (state.post = p0);
+  setHeader(p.state === "published" ? "Live post" : p.state === "scheduled" ? "Auto-post" : "Review draft", true, false);
+  const editable = ["draft", "scheduled", "failed", "published"].includes(p.state);
+  const canPublish = ["draft", "scheduled", "failed"].includes(p.state);
+  const img = p.image ? `<img class="mapimg" alt="Map image for this post" src="${imgSrc(p.image)}">` : `<div class="box small">No map image.</div>`;
+  $("#main").innerHTML = `
+    <div class="box small" id="newer" style="display:none;cursor:pointer;color:var(--fire)" onclick="state.post=null;route()"></div>
+    ${img}
+    <div>${p.state === "scheduled" ? `<span class="chip" style="color:var(--fire)">Auto-post at ${esc(p.auto_post_at)}</span>` : ""}
+      <span class="chip">${esc(p.state)}</span><span class="chip">Updated ${esc(p.updated)} by ${esc(p.last_by)}</span>
+      ${p.fb_url ? `<a class="chip" href="${esc(p.fb_url)}" target="_blank" rel="noopener">Open on Facebook</a>` : ""}
+      ${p.error ? `<span class="chip" style="color:var(--red)">${esc(p.error)}</span>` : ""}</div>
+    <a class="btn" style="display:flex;align-items:center;justify-content:center;text-decoration:none" href="#post-${p.id}/fix">${p.state === "published" ? "Fix location &amp; redraw image" : "Fix location, label &amp; image"}</a>
+    <label for="txt">Post text${editable ? " · tap to edit" : ""}</label>
+    <textarea id="txt" ${editable ? "" : "readonly"}>${esc(p.text)}</textarea>
+    ${canPublish ? `<button class="btn primary" id="pub" ${state.list && state.list.facebook !== "connected" ? "disabled" : ""}>Publish to Facebook</button>` : ""}
+    <div class="row">
+      ${editable ? `<button class="btn" id="save">${p.state === "published" ? "Save to Facebook" : "Save edits"}</button>` : ""}
+      ${p.state === "scheduled" ? `<button class="btn" id="pull">Hold as draft</button>` : ""}
+      ${canPublish ? `<button class="btn danger" id="discard">Discard</button>` : ""}
+    </div>
+    ${p.state === "published" ? `<h2>Post to X</h2><div class="box">
+      <div class="small">Short version for X (${xLen(xText(p.text))}/280): type, location and as much of the summary as fits. No links. Share opens your phone's share sheet with the map image attached: pick X.</div>
+      <div class="log" id="xtxt">${esc(xText(p.text))}</div>
+      <div class="row"><button class="btn primary" id="xshare">Share to X</button><button class="btn" id="xcopy">Copy text</button></div>
+      ${xUpdate(p.text) ? `<div class="small">Latest update (post it as a reply under your X post):</div><div class="log" id="xupd">${esc(xUpdate(p.text))}</div><button class="btn" id="xcopyupd">Copy update</button>` : ""}
+    </div>` : ""}
+    ${p.track ? `<h2>Tracking</h2><div class="log">${esc(p.track)}</div>` : ""}
+    <h2>History</h2>${(p.versions || []).map((v) => `<div class="ver">v${v.version} · ${esc(v.at)} · ${esc(v.by)}${v.note ? " · " + esc(v.note) : ""}</div>`).join("")}`;
+  const txt = () => $("#txt").value;
+  const busy = (b) => { state.busy = b; document.querySelectorAll("#main button").forEach((x) => (x.disabled = b)); };
+  if ($("#save")) $("#save").onclick = async () => { busy(true); try { await api("save", { id: p.id, version: p.version, text: txt() }); toast("Saved"); await showPost(p.id); } catch (e) { toast(e.message, 6000); busy(false); } };
+  if ($("#pub")) $("#pub").onclick = async () => {
+    if (!confirm("Publish this post to the Facebook page now?")) return;
+    busy(true);
+    try { const r = await api("publish", { id: p.id, version: p.version, text: txt() }); toast("Published"); location.hash = "#post-" + r.id; await showPost(r.id); }
+    catch (e) { toast(e.message, 8000); busy(false); }
+  };
+  if ($("#discard")) $("#discard").onclick = async () => { if (!confirm("Discard this draft?")) return; busy(true); try { await api("discard", { id: p.id }); toast("Discarded"); location.hash = ""; } catch (e) { toast(e.message, 6000); busy(false); } };
+  const copy = async (t) => { try { await navigator.clipboard.writeText(t); toast("Copied"); } catch { toast("Copy failed; long-press the text instead"); } };
+  if ($("#xcopy")) $("#xcopy").onclick = () => copy(xText(p.text));
+  if ($("#xcopyupd")) $("#xcopyupd").onclick = () => copy(xUpdate(p.text));
+  if ($("#xshare")) $("#xshare").onclick = async () => {
+    const text = xText(p.text);
+    try {
+      if (p.image && navigator.canShare) {
+        const blob = await (await fetch(imgSrc(p.image))).blob();
+        const file = new File([blob], "map.png", { type: blob.type || "image/png" });
+        if (navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], text }); return; }
+      }
+    } catch (e) { if (e && e.name === "AbortError") return; }
+    window.open("https://x.com/intent/post?text=" + encodeURIComponent(text), "_blank", "noopener");
+  };
+  if ($("#pull")) $("#pull").onclick = async () => { busy(true); try { await api("pullback", { id: p.id }); toast("Held as a draft"); await showPost(p.id); } catch (e) { toast(e.message, 6000); busy(false); } };
+}
+
+const MODES = [["pin", "Pin", "Exact address or intersection: a pin at zoom 18."], ["block", "Block", "A home: a soft circle on the block, no pin."], ["road", "Road", "A road or interstate exit: a wider circle."], ["mile", "MM", "Interstate mile marker: wide circle, zoom 14.5."], ["town", "Town", "Town view, no marker."]];
+async function showFix(id) {
+  const p = (state.post = await api("post?id=" + id));
+  setHeader("Fix details", true, false);
+  const lines = String(p.text).split("\n");
+  const [labelPart, placePart] = (lines[0] || "").split(" · ");
+  const [locPart, ...rest] = (lines[1] || "").split(" · ");
+  const datePart = rest.join(" · ");
+  const img = Object.assign({ e: "", l1: "", l2: "", l3: "", mode: "town", q: "", lat: "", lon: "", z: "" }, p.image || {});
+  $("#main").innerHTML = `
+    <img class="mapimg" id="prev" alt="Map preview" src="${p.image ? imgSrc(p.image) : ""}">
+    ${p.state === "published" ? `<div class="box small">This post is live. Text changes go to Facebook when you save. Facebook can't swap the photo automatically: redraw it here, tap <b>Download image</b>, then on Facebook edit the post, remove the old photo and add the new one.</div>
+    <a class="btn" id="dl" download="map.png" style="display:flex;align-items:center;justify-content:center;text-decoration:none" href="${p.image ? imgSrc(p.image) : "#"}">Download image</a>` : ""}
+    <h2>Post</h2>
+    <label>Label<input id="f_label" value="${esc(labelPart || "")}"></label>
+    <label>Town or place (after the ·)<input id="f_place" value="${esc(placePart || "")}"></label>
+    <label>Location line<input id="f_loc" value="${esc(locPart || "")}"></label>
+    <h2>Map image</h2>
+    <div class="seg" role="group" aria-label="How the location is marked">${MODES.map(([k, v]) => `<button data-m="${k}" class="${img.mode === k ? "on" : ""}">${v}</button>`).join("")}</div>
+    <div class="small" id="modehelp"></div>
+    <label>Find this place (address, cross streets or town)<input id="f_q" value="${esc(img.q)}"></label>
+    <div class="row"><label>Latitude<input id="f_lat" inputmode="decimal" value="${esc(img.lat)}"></label><label>Longitude<input id="f_lon" inputmode="decimal" value="${esc(img.lon)}"></label></div>
+    <div class="small">Latitude and longitude, when filled, win over the search text (used for mile markers).</div>
+    <label>Zoom (blank = default for the mode)<input id="f_z" inputmode="decimal" value="${esc(img.z)}"></label>
+    <label>Image line 1<input id="f_l1" value="${esc(img.l1)}"></label>
+    <label>Image line 2<input id="f_l2" value="${esc(img.l2)}"></label>
+    <label>Image line 3<input id="f_l3" value="${esc(img.l3)}"></label>
+    <label style="flex-direction:row;align-items:center;justify-content:space-between;min-height:44px">Attach the image<input type="checkbox" id="f_img" ${p.image ? "checked" : ""} style="width:22px;height:22px"></label>
+    <button class="btn" id="preview">Preview map</button>
+    <div class="box"><h2 style="margin:0">Teach the bot this fix</h2>
+      <div class="small">Saved as a correction the bot reads every run, like places.md. Example: heard "GRACELAND" on Lincoln County fire means Branchland.</div>
+      <label>Heard as<input id="c_heard" placeholder="e.g. GRACELAND"></label>
+      <label>Means<input id="c_means" placeholder="e.g. Branchland (Lincoln County, WV)"></label>
+      <label>Where it applies (optional)<input id="c_scope" placeholder="e.g. Lincoln WV fire channels"></label>
+    </div>
+    <button class="btn primary" id="savefix">Save and redraw</button>`;
+  let mode = img.mode;
+  const help = () => ($("#modehelp").textContent = (MODES.find((x) => x[0] === mode) || [, , ""])[2]);
+  help();
+  document.querySelectorAll(".seg button").forEach((b) => (b.onclick = () => { mode = b.dataset.m; document.querySelectorAll(".seg button").forEach((x) => x.classList.toggle("on", x === b)); help(); }));
+  const curImage = () => {
+    if (!$("#f_img").checked) return null;
+    const o = { e: img.e || (labelPart || "").trim().split(" ")[0], l1: $("#f_l1").value, l2: $("#f_l2").value, l3: $("#f_l3").value, mode, q: $("#f_q").value, lat: $("#f_lat").value, lon: $("#f_lon").value, z: $("#f_z").value };
+    for (const k of Object.keys(o)) if (!String(o[k]).trim()) delete o[k];
+    return o;
+  };
+  $("#preview").onclick = async () => {
+    const o = curImage();
+    if (!o) { toast("Turn on \u201cAttach the image\u201d first."); return; }
+    const btn = $("#preview"); btn.disabled = true; btn.textContent = "Drawing map\u2026"; $("#prev").style.opacity = ".4";
+    try {
+      const r = await fetch(imgSrc(o) + "&t=" + Date.now());
+      if (!r.ok) {
+        const t = await r.text(); let msg = t;
+        try { msg = JSON.parse(t).error || t; } catch {}
+        throw new Error("Couldn't draw the map: " + String(msg).slice(0, 200));
+      }
+      const blob = await r.blob();
+      $("#prev").src = URL.createObjectURL(blob);
+      if ($("#dl")) $("#dl").href = imgSrc(o);
+      toast("Preview updated");
+    } catch (e) { toast(e.message, 8000); }
+    finally { btn.disabled = false; btn.textContent = "Preview map"; $("#prev").style.opacity = "1"; }
+  };
+  $("#savefix").onclick = async () => {
+    const newLines = lines.slice();
+    newLines[0] = [$("#f_label").value.trim(), $("#f_place").value.trim()].filter(Boolean).join(" · ");
+    newLines[1] = [$("#f_loc").value.trim(), datePart].filter(Boolean).join(" · ");
+    try {
+      const heard = $("#c_heard").value.trim(), means = $("#c_means").value.trim();
+      if (heard && means) await api("corrections", { heard, means, scope: $("#c_scope").value.trim() });
+      await api("save", { id: p.id, version: p.version, text: newLines.join("\n"), image: curImage(), image_set: true });
+      toast("Saved"); location.hash = "#post-" + p.id;
+    } catch (e) { toast(e.message, 6000); }
+  };
+}
+
+async function showFixes() {
+  setHeader("Bot fixes", false, true);
+  const r = await api("corrections");
+  $("#main").innerHTML = `<div class="box"><h2 style="margin:0">Add a fix</h2>
+      <label>Heard as<input id="c_heard" placeholder="e.g. GRACELAND"></label>
+      <label>Means<input id="c_means" placeholder="e.g. Branchland (Lincoln County, WV)"></label>
+      <label>Where it applies (optional)<input id="c_scope"></label>
+      <button class="btn" id="add">Save fix</button></div>` +
+    ((r.corrections || []).map((c) => `<div class="card" style="cursor:default"><div class="meta" style="flex:1"><span class="title">${esc(c.heard)} → ${esc(c.means)}</span><span class="small">${esc(c.scope || "everywhere")} · added ${esc(c.created)}</span></div><button class="btn danger" data-del="${c.id}" style="height:44px">Remove</button></div>`).join("") || `<div class="empty">No fixes saved yet.</div>`);
+  $("#add").onclick = async () => { try { await api("corrections", { heard: $("#c_heard").value, means: $("#c_means").value, scope: $("#c_scope").value }); toast("Saved"); showFixes(); } catch (e) { toast(e.message); } };
+  document.querySelectorAll("[data-del]").forEach((b) => (b.onclick = async () => { if (!confirm("Remove this fix?")) return; await api("corrections/delete", { id: Number(b.dataset.del) }); showFixes(); }));
+}
+
+async function showPrayers(quiet, refresh, scan) {
+  const r = await api("prayers" + (refresh ? "?refresh=1" : scan ? "?scan=" + scan : ""));
+  const sig = JSON.stringify(r); if (quiet && sig === state.prSig) return; state.prSig = sig;
+  setHeader("Prayer meter", false, true);
+  const pct = (x) => (x.c ? Math.round((100 * x.p) / x.c) + "% of comments" : "no comments yet");
+  const stat = (label, x) => `<div class="box" style="flex:1;align-items:center;gap:2px"><div class="small">${label}</div><div style="font-size:30px;font-weight:700">🙏 ${x.p}</div><div class="small">${pct(x)}</div></div>`;
+  $("#main").innerHTML = `
+    <div class="row">${stat("Today", r.today)}${stat("7 days", r.week)}</div>
+    ${stat("All time", r.all)}
+    <h2>Most prayed for</h2>
+    ${(r.top || []).map((t, i) => `<div class="card" style="cursor:default"><div class="meta"><span class="kicker">#${i + 1} · ${esc(t.when)}</span><span class="title">${esc(t.title)}</span><span class="small">🙏 ${t.prayers} of ${t.comments} comments</span></div></div>`).join("") || `<div class="empty">No prayers counted yet.</div>`}
+    <h2>Prayers per post, by call type</h2>
+    ${(r.types || []).map((t) => `<div class="ver">${esc(t.type)} · 🙏 ${(t.prayers / t.posts).toFixed(1)} per post · ${t.posts} post${t.posts === 1 ? "" : "s"}</div>`).join("") || `<div class="small">Nothing yet.</div>`}
+    <div class="small">Last checked ${esc(r.last || "never")}. Counts only, no names or comment text are kept.</div>
+    <button class="btn" id="prnow">Check now</button>
+    <div class="box small">${!r.scan ? "All time counts posts from the last few days until you scan the Page's older posts."
+      : r.scan.running ? `Scanning older posts: ${r.scan.posts} so far${r.scan.oldest ? ", back to " + esc(r.scan.oldest) : ""}. About 25 posts a minute; this page updates on its own.`
+      : `Scanned ${r.scan.posts} posts${r.scan.oldest ? ", back to " + esc(r.scan.oldest) : ""}.`}
+      ${r.scan && r.scan.running ? `<button class="btn" id="prscan" data-a="stop">Stop scanning</button>` : `<button class="btn" id="prscan" data-a="start">${r.scan ? "Scan again" : "Count all past posts"}</button>`}</div>`;
+  $("#prscan").onclick = async () => { const a = $("#prscan").dataset.a; if (a === "start" && !confirm("Count prayers on every older post? It runs in the background, about 25 posts a minute.")) return; try { await showPrayers(false, false, a); toast(a === "start" ? "Scan started" : "Scan stopped"); } catch (e) { toast(e.message, 6000); } };
+  $("#prnow").onclick = async () => { $("#prnow").disabled = true; try { await showPrayers(false, true); toast("Counted"); } catch (e) { toast(e.message, 6000); $("#prnow").disabled = false; } };
+}
+
+async function showLogs(quiet) {
+  setHeader("Run logs", false, true);
+  const r = await api("runlogs");
+  const sig = JSON.stringify(r.runlogs || []); if (quiet && sig === state.logSig) return; state.logSig = sig;
+  $("#main").innerHTML = (r.runlogs || []).map((l) => `<div class="log">${esc(l.text)}</div>`).join("") || `<div class="empty">No run logs yet.</div>`;
+}
+route();
+</script>
+</body>
+</html>
