@@ -69,4 +69,12 @@ assert.equal((await rv("list", null, { "X-Scribe": "1" })).status, 200);
 // 7. talker-alias labels are sanitised
 const src = fs.readFileSync("worker.mjs", "utf8");
 assert.ok(src.includes('.replace(/[^A-Za-z0-9 .\\/-]/g, "")'));
+// 8. live-edit size check: a relabel plus an UPDATE near the end is two small changes, not one big one
+fs.writeFileSync("cle_w.mjs", src + "\nexport { checkLiveEdit };");
+const { checkLiveEdit } = await import("./cle_w.mjs");
+const body = "Units are responding to a crash with a possible entrapment. " + "The caller reported a vehicle off the road with one occupant who may be trapped. ".repeat(5);
+const live = `🚗 Possible Entrapment · Dry Ridge Road, Boyd County, KY\n📍 Dry Ridge Road · 🕒 Nov 27, 2026, 12:30 PM\n\n${body}\n\n🔄 UPDATE 12:35 PM: Units on scene.` + footer;
+checkLiveEdit({}, live, live.replace("Possible Entrapment", "Crash with Injuries").replace(footer, "\n🔄 UPDATE 12:55 PM: The driver was freed." + footer));
+assert.throws(() => checkLiveEdit({}, live, "🚗 Other\n" + "x".repeat(1500) + footer));
+fs.unlinkSync("cle_w.mjs");
 console.log("security ok");

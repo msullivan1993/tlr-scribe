@@ -19,3 +19,4 @@ local/channels-seen.csv
 # database exports (tools/talkgroups.sql, tools/tonesets.sql): input files, not repo content
 /talkgroups.csv
 /tonesets.csv
+tests/cle_w.mjs

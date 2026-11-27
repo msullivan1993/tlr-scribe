@@ -1779,9 +1779,33 @@ async function publishPost(env, id, by, expectVersion) {
 // not enough to replace the post with something else. Every live edit is announced (notifyPost "updated").
 function checkLiveEdit(env, oldText, newText) {
   const a = String(oldText), b = String(newText);
-  let pre = 0; while (pre < a.length && pre < b.length && a[pre] === b[pre]) pre++;
-  let suf = 0; while (suf < a.length - pre && suf < b.length - pre && a[a.length - 1 - suf] === b[b.length - 1 - suf]) suf++;
-  const removed = a.length - pre - suf, added = b.length - pre - suf;
+  // Measure by lines (longest common subsequence), so a relabelled header plus an UPDATE line near the end
+  // counts as two small changes, not as everything in between being replaced.
+  const A = a.split("\n"), B = b.split("\n");
+  const L = Array.from({ length: A.length + 1 }, () => new Array(B.length + 1).fill(0));
+  for (let i = A.length - 1; i >= 0; i--) for (let j = B.length - 1; j >= 0; j--)
+    L[i][j] = A[i] === B[j] ? L[i + 1][j + 1] + 1 : Math.max(L[i + 1][j], L[i][j + 1]);
+  // Walk the diff in hunks; a changed line paired with its replacement counts only the characters that
+  // differ inside it (a past-tense switch edits a few words of the summary, not the whole paragraph).
+  let removed = 0, added = 0, i = 0, j = 0;
+  const flush = (rem, add) => {
+    const n = Math.min(rem.length, add.length);
+    for (let k = 0; k < n; k++) {
+      const x = rem[k], y = add[k];
+      let p = 0; while (p < x.length && p < y.length && x[p] === y[p]) p++;
+      let q = 0; while (q < x.length - p && q < y.length - p && x[x.length - 1 - q] === y[y.length - 1 - q]) q++;
+      removed += x.length - p - q; added += y.length - p - q;
+    }
+    for (const x of rem.slice(n)) removed += x.length + 1;
+    for (const y of add.slice(n)) added += y.length + 1;
+  };
+  let rem = [], add = [];
+  while (i < A.length || j < B.length) {
+    if (i < A.length && j < B.length && A[i] === B[j]) { flush(rem, add); rem = []; add = []; i++; j++; }
+    else if (j >= B.length || (i < A.length && L[i + 1][j] >= L[i][j + 1])) rem.push(A[i++]);
+    else add.push(B[j++]);
+  }
+  flush(rem, add);
   const maxRemove = Math.max(Number(env.LIVE_EDIT_MAX_REMOVE || 400), Math.floor(a.length * 0.2));
   const maxAdd = Number(env.LIVE_EDIT_MAX_ADD || 700);
   const tail = (t) => t.trim().split("\n").slice(-2).join("\n");
