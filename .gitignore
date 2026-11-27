@@ -20,3 +20,4 @@ local/channels-seen.csv
 /talkgroups.csv
 /tonesets.csv
 tests/cle_w.mjs
+tests/geo_w.mjs

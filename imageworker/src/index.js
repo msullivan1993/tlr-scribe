@@ -21,6 +21,18 @@ const FONTS = [new Uint8Array(oswaldBold), new Uint8Array(interSemi), new Uint8A
 const MODES = new Set(["pin", "block", "road", "mile", "town", "county"]);
 const GEO_TYPES = { pin: "address,street", block: "address,street", road: "street", mile: "street", town: "place,locality,neighborhood", county: "district" };
 
+// Expected county and state from image line 3 ("Coal Grove, Lawrence Co, OH" -> lawrence / OH), so a result
+// can be checked: a pin outside the incident's county is wrong, whatever the geocoder says.
+function expectedCounty(l3) {
+  const m = String(l3 || "").match(/(?:^|,)\s*([^,]+?)\s+(?:Co|County|Parish|Borough)\.?\s*,\s*([A-Za-z]{2})\s*$/);
+  return m ? { county: normCounty(m[1]), st: m[2].toUpperCase() } : null;
+}
+function normCounty(c) { return String(c || "").toLowerCase().replace(/\b(county|parish|borough|co)\b\.?/g, "").replace(/[^a-z]/g, ""); }
+function inCounty(r, want) {
+  if (!r || !want || !r.county) return null; // unknown
+  return normCounty(r.county) === want.county && (!r.st || r.st === want.st);
+}
+
 async function geocode(q, mode, token) {
   const u = new URL("https://api.mapbox.com/search/geocode/v6/forward");
   u.searchParams.set("q", q);
@@ -34,7 +46,44 @@ async function geocode(q, mode, token) {
   const f = data.features && data.features[0];
   if (!f || !f.geometry) return null;
   const [lon, lat] = f.geometry.coordinates;
-  return { lon, lat, name: (f.properties && (f.properties.full_address || f.properties.name)) || "" };
+  const ctx = (f.properties && f.properties.context) || {};
+  return { source: "Mapbox", lon, lat, name: (f.properties && (f.properties.full_address || f.properties.name)) || "",
+    county: (ctx.district && ctx.district.name) || "", st: (ctx.region && (ctx.region.region_code || "")).toUpperCase() };
+}
+
+// US Census Bureau geocoder: free, no key, street addresses only, and it reports the county the address is in.
+async function censusGeocode(q) {
+  const u = new URL("https://geocoding.geo.census.gov/geocoder/geographies/onelineaddress");
+  u.searchParams.set("address", q);
+  u.searchParams.set("benchmark", "Public_AR_Current");
+  u.searchParams.set("vintage", "Current_Current");
+  u.searchParams.set("layers", "Counties");
+  u.searchParams.set("format", "json");
+  try {
+    const res = await fetch(u, { signal: AbortSignal.timeout(10000) });
+    if (!res.ok) return null;
+    const m = (((await res.json()).result || {}).addressMatches || [])[0];
+    if (!m || !m.coordinates) return null;
+    const c = ((m.geographies || {}).Counties || [])[0] || {};
+    return { source: "Census", lon: m.coordinates.x, lat: m.coordinates.y, name: m.matchedAddress || "",
+      county: c.NAME || c.BASENAME || "", st: ((m.addressComponents || {}).state || "").toUpperCase() };
+  } catch { return null; }
+}
+
+// Pick a location: ask Mapbox (and, for street addresses, the Census geocoder) and keep a result inside the
+// expected county. Returns { pick, candidates, fallback } where fallback means "no trustworthy pin: show the
+// town or county instead".
+async function locate(q, mode, l3, token) {
+  const want = expectedCounty(l3);
+  const address = (mode === "pin" || mode === "block") && /^\s*\d/.test(q);
+  const [mb, cs] = await Promise.all([geocode(q, mode, token).catch(() => null), address ? censusGeocode(q) : null]);
+  const candidates = [mb, cs].filter(Boolean).map((c) => ({ ...c, inCounty: inCounty(c, want) }));
+  const ok = candidates.filter((c) => c.inCounty === true);
+  if (ok.length) return { pick: ok[0], candidates };
+  if (!want) return { pick: candidates[0] || null, candidates };          // nothing to check against
+  const unknown = candidates.filter((c) => c.inCounty === null);
+  if (unknown.length && !candidates.some((c) => c.inCounty === false)) return { pick: unknown[0], candidates };
+  return { pick: null, candidates, fallback: true };                       // every result is in the wrong county
 }
 
 // AUTH: sig = HMAC-SHA256(IMAGE_KEY, the other parameters sorted as k=v joined by &), first 40 hex characters,
@@ -62,9 +111,21 @@ export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     if (url.pathname === "/" || url.pathname === "/health") return new Response("tlr-scribe-imageworker ok\n");
-    if (url.pathname !== "/map.png") return new Response("not found\n", { status: 404 });
+    if (url.pathname !== "/map.png" && url.pathname !== "/lookup") return new Response("not found\n", { status: 404 });
     if (!env.IMAGE_KEY || !(await authorized(url.searchParams, env))) return new Response("forbidden\n", { status: 403 });
     if (!env.MAPBOX_TOKEN) return new Response("MAPBOX_TOKEN not set\n", { status: 500 });
+
+    // Lookup for the review page: every source's answer for an address, marked in or out of the county.
+    if (url.pathname === "/lookup") {
+      const q = (url.searchParams.get("q") || "").trim();
+      if (!q) return Response.json({ error: "need q" }, { status: 400 });
+      const want = expectedCounty(url.searchParams.get("l3"));
+      const [a, b, c] = await Promise.all([geocode(q, "pin", env.MAPBOX_TOKEN).catch(() => null), geocode(q, "town", env.MAPBOX_TOKEN).catch(() => null), censusGeocode(q)]);
+      const seen = new Set();
+      const candidates = [a, c, b].filter(Boolean).filter((x) => { const k = x.lat.toFixed(4) + x.lon.toFixed(4); if (seen.has(k)) return false; seen.add(k); return true; })
+        .map((x) => ({ ...x, inCounty: inCounty(x, want) }));
+      return Response.json({ candidates, county: want });
+    }
 
     // Cache by the request without the key or signature.
     const cacheUrl = new URL(url);
@@ -76,7 +137,7 @@ export default {
     if (hit) return hit;
 
     const p = url.searchParams;
-    const mode = MODES.has(p.get("mode")) ? p.get("mode") : "town";
+    let mode = MODES.has(p.get("mode")) ? p.get("mode") : "town";
     const accent = /^[0-9a-fA-F]{6}$/.test(p.get("c") || "") ? p.get("c") : accentFor(p.get("e"));
     let lon = parseFloat(p.get("lon")), lat = parseFloat(p.get("lat"));
     let found = "";
@@ -84,10 +145,16 @@ export default {
       if (!(isFinite(lon) && isFinite(lat))) {
         const q = (p.get("q") || p.get("l3") || "").trim();
         if (!q) return new Response("need q or lat/lon\n", { status: 400 });
-        const g = await geocode(q, mode, env.MAPBOX_TOKEN);
-        if (!g) return new Response("location not found\n", { status: 404 });
-        ({ lon, lat } = g);
-        found = g.name;
+        let { pick, fallback } = await locate(q, mode, p.get("l3"), env.MAPBOX_TOKEN);
+        if (!pick && fallback) {
+          // No result in the right county: show the town or county from line 3, without a pin.
+          const area = String(p.get("l3") || "").replace(/\bCo\b\.?/, "County");
+          pick = await geocode(area, "town", env.MAPBOX_TOKEN).catch(() => null) || await geocode(area, "county", env.MAPBOX_TOKEN).catch(() => null);
+          if (pick) { mode = "town"; pick = { ...pick, source: pick.source + " (area only: no match in the county)" }; }
+        }
+        if (!pick) return new Response("location not found\n", { status: 404 });
+        ({ lon, lat } = pick);
+        found = `${pick.name} [${pick.source}]`;
       }
       const mapRes = await fetch(mapboxStaticUrl({ lon, lat, mode, accent, token: env.MAPBOX_TOKEN, zoom: p.has("z") ? parseFloat(p.get("z")) : undefined }), { signal: AbortSignal.timeout(20000) });
       if (!mapRes.ok) return new Response(`map ${mapRes.status}\n`, { status: 502 });

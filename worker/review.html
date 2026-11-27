@@ -254,6 +254,8 @@ async function showFix(id) {
     <label>Find this place (address, cross streets or town)<input id="f_q" value="${esc(img.q)}"></label>
     <div class="row"><label>Latitude<input id="f_lat" inputmode="decimal" value="${esc(img.lat)}"></label><label>Longitude<input id="f_lon" inputmode="decimal" value="${esc(img.lon)}"></label></div>
     <div class="small">Latitude and longitude, when filled, win over the search text (used for mile markers).</div>
+    <button class="btn" id="lookup">Look up coordinates</button>
+    <div id="lookres"></div>
     <label>Zoom (blank = default for the mode)<input id="f_z" inputmode="decimal" value="${esc(img.z)}"></label>
     <label>Image line 1<input id="f_l1" value="${esc(img.l1)}"></label>
     <label>Image line 2<input id="f_l2" value="${esc(img.l2)}"></label>
@@ -276,6 +278,23 @@ async function showFix(id) {
     const o = { e: img.e || (labelPart || "").trim().split(" ")[0], l1: $("#f_l1").value, l2: $("#f_l2").value, l3: $("#f_l3").value, mode, q: $("#f_q").value, lat: $("#f_lat").value, lon: $("#f_lon").value, z: $("#f_z").value };
     for (const k of Object.keys(o)) if (!String(o[k]).trim()) delete o[k];
     return o;
+  };
+  $("#lookup").onclick = async () => {
+    const q = $("#f_q").value.trim();
+    if (!q) { toast("Type the address in \u201cFind this place\u201d first."); return; }
+    const btn = $("#lookup"); btn.disabled = true; btn.textContent = "Looking up\u2026";
+    try {
+      const d = await api("geocode?q=" + encodeURIComponent(q) + "&l3=" + encodeURIComponent($("#f_l3").value));
+      const c = d.candidates || [];
+      $("#lookres").innerHTML = c.length ? c.map((x, i) => `<div class="box small"><b>${esc(x.source)}</b> ${x.inCounty === true ? "\u2705 in the county" : x.inCounty === false ? "\u274c " + esc(x.county || "other county") : "county unknown"}<br>${esc(x.name)}<br>${Number(x.lat).toFixed(5)}, ${Number(x.lon).toFixed(5)} <button class="btn" data-use="${i}">Use this</button></div>`).join("") : `<div class="box small">No source found that address.</div>`;
+      document.querySelectorAll("[data-use]").forEach((b) => (b.onclick = () => {
+        const x = c[Number(b.dataset.use)];
+        $("#f_lat").value = Number(x.lat).toFixed(5); $("#f_lon").value = Number(x.lon).toFixed(5);
+        if (mode === "town" || mode === "county") { mode = "pin"; document.querySelectorAll(".seg button").forEach((y) => y.classList.toggle("on", y.dataset.m === "pin")); help(); }
+        toast("Coordinates set; tap Preview map");
+      }));
+    } catch (e) { toast(e.message, 8000); }
+    finally { btn.disabled = false; btn.textContent = "Look up coordinates"; }
   };
   $("#preview").onclick = async () => {
     const o = curImage();
