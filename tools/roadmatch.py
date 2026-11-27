@@ -271,7 +271,10 @@ def main():
     if len(sys.argv) < 3:
         sys.exit(__doc__)
     slug = sys.argv[1].lower()
-    text = " ".join(sys.argv[2:])
+    if not re.fullmatch(r"[a-z][a-z-]*-[a-z]{2}", slug):
+        sys.exit("county must look like carter-ky")
+    # "-" reads the transcript from stdin, so transcript text never has to pass through the shell.
+    text = sys.stdin.read() if sys.argv[2:] == ["-"] else " ".join(sys.argv[2:])
     res = match(slug, text)
     if not res:
         print("no unknown road names found")

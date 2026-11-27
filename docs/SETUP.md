@@ -42,6 +42,9 @@ In ThinLine Radio, add a custom alert webhook to `https://<your-worker>.<account
 
 ## 3. Review page
 Put `/review` behind Cloudflare Access (a custom domain such as `review.example.com` routed to the Worker, an Access application with your email), then set `ACCESS_TEAM`, `ACCESS_AUD` and `REVIEW_URL`.
+- In the Access application: **Advanced settings → Cookie settings**: SameSite **Lax**, HttpOnly **on**, binding cookie **on**. Keep the policy to your own email address(es), and set `REVIEW_EMAILS` to the same list.
+- `REVIEW_TOKEN` is only for testing before Access is set up; it stops working once Access is configured.
+- `/status` needs the header `X-Status-Secret` (set `STATUS_SECRET`, or it uses `TLR_SECRET`).
 
 ## 4. Facebook
 Prefer Publer over a Meta app? See [PUBLISHING.md](PUBLISHING.md) for the trade-offs (daily post caps, rate limits) and setup, then skip this step.
@@ -55,10 +58,10 @@ npm install
 npx wrangler deploy --name <your-image-worker>
 npx wrangler secret put IMAGE_KEY
 ```
-Set the same `IMAGE_KEY` on the main Worker and `IMAGE_BASE` = `https://<your-image-worker>.<account>.workers.dev/map.png`.
+Set the same `IMAGE_KEY` on the main Worker and `IMAGE_BASE` = `https://<your-image-worker>.<account>.workers.dev/map.png`. Image URLs are signed with it (the key itself is never sent); once both Workers are deployed, set `IMAGE_REQUIRE_SIG=on` on the image Worker.
 
 ## 6. The scheduled task (Claude)
-1. In claude.ai, add a custom connector with the URL `https://<your-worker>.<account>.workers.dev/mcp/<MCP_SECRET>`.
+1. In claude.ai, add a custom connector with the URL `https://<your-worker>.<account>.workers.dev/mcp/<MCP_SECRET>` (or `/mcp` with an `Authorization: Bearer <MCP_SECRET>` header where your platform lets you set one: a secret in a URL ends up in more logs).
 2. Create a scheduled task with no schedule (it is woken by the Worker), attach your instance repo and the connector, and use this prompt:
 
    > You run the TLR Scribe draft task for <your page>. Profile: public-safety.
@@ -67,7 +70,7 @@ Set the same `IMAGE_KEY` on the main Worker and `IMAGE_BASE` = `https://<your-im
 3. Give the task an API trigger and save its URL and token as `CLAUDE_FIRE_URL` and `CLAUDE_FIRE_TOKEN`.
 4. Optional light task (a cheaper model for routine wakes): same prompt with "LIGHT RUN." added, saved as `CLAUDE_FIRE_URL_LIGHT` / `CLAUDE_FIRE_TOKEN_LIGHT`.
 
-Attach only the connector the task needs. Keep `AUTO_POST: off` until you trust the drafts.
+Attach only the connector the task needs: never a posting tool (Publer, Buffer, a social media connector), since transcripts are untrusted text. Keep auto-posting off until you trust the drafts: it needs both `AUTO_POST: on` in `local/LOCALRULES.md` and the Worker variable `AUTO_POST=on`, and the Worker caps it (`AUTO_POST_MAX_PER_HOUR`, `AUTO_POST_MAX_PER_DAY`).
 
 ## 7. Notices (optional)
 Discord: `DISCORD_WEBHOOK_URL` (or split with `_DRAFTS`, `_POSTS`, `_LOG`). Pushover: `PUSHOVER_TOKEN`, `PUSHOVER_USER`.

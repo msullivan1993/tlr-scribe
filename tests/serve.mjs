@@ -20,6 +20,6 @@ await mcp("post_create", { text: "🔥 Structure Fire · Ashland, Boyd County, K
 http.createServer(async (req, res) => {
   if (req.url.startsWith("/__bump")) { const v = Number(new URL(req.url, "http://x").searchParams.get("v")); const o = await mcp("post_update", { id: 1, version: v, text: "BUMPED v" + v + "\nline2" }); res.end(JSON.stringify(o)); return; }
   const chunks = []; for await (const c of req) chunks.push(c);
-  const r = await W.fetch(new Request("http://localhost:8787" + req.url, { method: req.method, headers: { ...req.headers, cookie: "scribe_review=rt" }, body: chunks.length ? Buffer.concat(chunks) : undefined }), env, {});
+  const r = await W.fetch(new Request("http://localhost:8787" + req.url, { method: req.method, headers: { ...req.headers, cookie: "scribe_review=rt", "x-scribe": "1" }, body: chunks.length ? Buffer.concat(chunks) : undefined }), env, {});
   res.writeHead(r.status, Object.fromEntries(r.headers)); res.end(Buffer.from(await r.arrayBuffer()));
 }).listen(8787, () => console.log("up"));

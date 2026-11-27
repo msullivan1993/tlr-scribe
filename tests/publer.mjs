@@ -37,11 +37,12 @@ globalThis.fetch = async (u, init = {}) => {
 const env = { DB, SEEN, MCP_SECRET: "s", REVIEW_TOKEN: "rt", TLR_SECRET: "t", IMAGE_KEY: "ik", IMAGE_BASE: "https://img.example/map.png",
   PUBLISHER: "publer", PUBLER_KEY: "pk", PUBLER_WORKSPACE: "ws", PUBLER_ACCOUNTS: "acc1, acc2", PUBLER_DAILY_LIMIT: "2" };
 const mcp = async (name, args) => { const r = await W.fetch(new Request("https://x/mcp", { method: "POST", headers: { Authorization: "Bearer s" }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/call", params: { name, arguments: args } }) }), env, {}); const j = await r.json(); const t = j.result.content[0].text; return j.result.isError ? "ERR " + t : JSON.parse(t); };
-const rv = async (path, body) => { const r = await W.fetch(new Request("https://x/review/api/" + path, { method: body ? "POST" : "GET", headers: { Cookie: "scribe_review=rt" }, body: body ? JSON.stringify(body) : undefined }), env, {}); return [r.status, await r.json()]; };
+const rv = async (path, body) => { const r = await W.fetch(new Request("https://x/review/api/" + path, { method: body ? "POST" : "GET", headers: { Cookie: "scribe_review=rt", "X-Scribe": "1", "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }), env, {}); return [r.status, await r.json()]; };
 
 const list = (await rv("list"))[1];
 assert.equal(list.facebook, "connected"); assert.equal(list.publisher, "Publer");
-const text = "🔥 Structure Fire · Ashland, Boyd County, KY\n1200 block of Winchester Avenue · Nov 26, 2026, 2:00 AM\n\nAshland FD is responding.";
+const footer = "\n\nInformation is from live scanner transcriptions and may not be complete or accurate.\n🎧 Listen live ➜ scanner.example.com";
+const text = "🔥 Structure Fire · Ashland, Boyd County, KY\n1200 block of Winchester Avenue · Nov 26, 2026, 2:00 AM\n\nAshland FD is responding." + footer;
 const c = await mcp("post_create", { text, image: { e: "🔥", l1: "FIRE", mode: "town", q: "Ashland, KY" } });
 const pub = await rv("publish", { id: c.id, version: c.version });
 assert.equal(pub[0], 200, JSON.stringify(pub));
@@ -49,7 +50,10 @@ const row = sq.prepare("SELECT state, fb_id, fb_url FROM posts WHERE id = ?").ge
 assert.equal(row.state, "published"); assert.equal(row.fb_id, "publer:pp0,pp1"); assert.equal(row.fb_url, "https://facebook.com/p/1");
 assert.deepEqual(published[0].media, [{ id: "media1", type: "image" }]);
 const cur = (await mcp("post_list", {})).posts.find((p) => p.id === c.id);
-const up = await mcp("post_update", { id: c.id, version: cur.version, text: cur.text + "\n\nUPDATE 2:10 AM: Fire is out." });
+const up = await mcp("post_update", { id: c.id, version: cur.version, text: cur.text.replace(footer, "\n\nUPDATE 2:10 AM: Fire is out." + footer) });
+// a rewrite of a live post is refused
+const cur2 = (await mcp("post_list", {})).posts.find((p) => p.id === c.id);
+assert.ok(String(await mcp("post_update", { id: c.id, version: cur2.version, text: "🔥 Totally different\n" + "x".repeat(900) + footer })).includes("refused"));
 assert.ok(!String(up).startsWith("ERR"), up);
 assert.ok(edits.pp0.includes("Fire is out") && edits.pp1.includes("Fire is out"));
 // daily limit (2): one more publishes, the third is refused

@@ -22,9 +22,9 @@ globalThis.fetch = async (u, init = {}) => {
   if (u.includes("map.png")) return new Response("PNG", { headers: { "Content-Type": "image/png" } });
   return new Response("{}", { status: 200 });
 };
-const env = { DB, SEEN, MCP_SECRET: "s", FB_PAGE_ID: "PAGE", FB_PAGE_TOKEN: "tok", IMAGE_KEY: "ik", REVIEW_TOKEN: "rt", TLR_SECRET: "t" };
+const env = { DB, SEEN, AUTO_POST: "on", MCP_SECRET: "s", FB_PAGE_ID: "PAGE", FB_PAGE_TOKEN: "tok", IMAGE_KEY: "ik", REVIEW_TOKEN: "rt", TLR_SECRET: "t" };
 const mcp = async (name, args) => { const r = await W.fetch(new Request("https://x/mcp", { method: "POST", headers: { Authorization: "Bearer s" }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/call", params: { name, arguments: args } }) }), env, {}); const j = await r.json(); const t = j.result.content[0].text; return j.result.isError ? "ERR " + t : JSON.parse(t); };
-const rv = async (path, body) => { const r = await W.fetch(new Request("https://x/review/api/" + path, { method: body ? "POST" : "GET", headers: { Cookie: "scribe_review=rt" }, body: body ? JSON.stringify(body) : undefined }), env, {}); return [r.status, r.headers.get("Content-Type").includes("json") ? await r.json() : await r.text()]; };
+const rv = async (path, body) => { const r = await W.fetch(new Request("https://x/review/api/" + path, { method: body ? "POST" : "GET", headers: { Cookie: "scribe_review=rt", "X-Scribe": "1", "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }), env, {}); return [r.status, r.headers.get("Content-Type").includes("json") ? await r.json() : await r.text()]; };
 const tl = await (await W.fetch(new Request("https://x/mcp", { method: "POST", headers: { Authorization: "Bearer s" }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list" }) }), env, {})).json();
 console.log("tools:", tl.result.tools.map((t) => t.name).join(","));
 const text1 = "🔥 Structure Fire · Ashland, Boyd County, KY\n1200 block of Winchester Avenue · Nov 26, 2026, 2:00 AM\n\nAshland FD is responding.\n\nInformation is from live scanner transcriptions and may not be complete or accurate.";

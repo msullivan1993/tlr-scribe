@@ -10,7 +10,7 @@ import { fileURLToPath } from "node:url";
 const here = dirname(fileURLToPath(import.meta.url));
 copyFileSync(join(here, "..", "worker", "worker.js"), join(here, "worker.mjs"));
 let failed = 0;
-for (const t of ["run", "ctx", "posts", "junk", "prayers", "wake", "urgent", "refs", "publer"]) {
+for (const t of ["run", "ctx", "posts", "junk", "prayers", "wake", "urgent", "refs", "publer", "security"]) {
   const r = spawnSync(process.execPath, ["--no-warnings", t + ".mjs"], { cwd: here, encoding: "utf8", timeout: 120000 });
   const out = (r.stdout || "") + (r.stderr || "");
   const bad = r.status !== 0 || /ReferenceError|TypeError|SyntaxError/.test(out);

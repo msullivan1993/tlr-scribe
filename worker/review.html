@@ -69,7 +69,7 @@ const esc = (x) => String(x == null ? "" : x).replace(/[&<>"']/g, (c) => ({ "&":
 let state = { tab: "draft", list: null, post: null };
 function toast(msg, ms) { const t = $("#toast"); t.textContent = msg; t.style.display = "block"; clearTimeout(t._h); t._h = setTimeout(() => (t.style.display = "none"), ms || 3500); }
 async function api(path, body) {
-  const r = await fetch(API + path, body ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) } : {});
+  const r = await fetch(API + path, body ? { method: "POST", headers: { "Content-Type": "application/json", "X-Scribe": "1" }, body: JSON.stringify(body) } : { headers: { "X-Scribe": "1" } });
   const j = await r.json().catch(() => ({ error: "bad response" }));
   if (!r.ok || j.error) throw new Error(j.error || ("HTTP " + r.status));
   return j;

@@ -16,7 +16,7 @@ globalThis.fetch = async (u, init = {}) => { u = String(u);
   if (u.includes("/P_1/comments")) return new Response(JSON.stringify({ data: comments.map((m) => ({ message: m })) }));
   throw new Error("net " + u); };
 const run = () => W.scheduled({}, env, { waitUntil: (p) => p });
-const api = async () => (await W.fetch(new Request("http://x/review/api/prayers", { headers: { cookie: "scribe_review=rt" } }), env, {})).json();
+const api = async () => (await W.fetch(new Request("http://x/review/api/prayers", { headers: { cookie: "scribe_review=rt", "X-Scribe": "1" } }), env, {})).json();
 // call prayerCheck through scheduled; other crons will error harmlessly
 await run(); await new Promise(r => setTimeout(r, 200));
 console.log(JSON.stringify(await api()).slice(0, 400)); console.log("discord:", disc);
@@ -32,7 +32,7 @@ globalThis.fetch = async (u, init = {}) => { u = String(u);
   if (false) { }
   if (u.includes("/OLD_")) return new Response(JSON.stringify({ data: [{ message: "Prayers" }, { message: "ok" }] }));
   return of(u, init); };
-await W.fetch(new Request("http://x/review/api/prayers?scan=start", { headers: { cookie: "scribe_review=rt" } }), env, {});
+await W.fetch(new Request("http://x/review/api/prayers?scan=start", { headers: { cookie: "scribe_review=rt", "X-Scribe": "1" } }), env, {});
 for (let i = 0; i < 3; i++) { await run(); await new Promise(r => setTimeout(r, 150)); }
 console.log("kv bf:", kv.get("prayer:bf"));
 const a2 = await api(); console.log("scan:", JSON.stringify(a2.scan), "all:", JSON.stringify(a2.all)); console.log("discord:", disc);

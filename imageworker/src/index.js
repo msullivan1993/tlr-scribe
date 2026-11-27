@@ -1,5 +1,5 @@
 // TLR Scribe map image Worker.
-// GET /map.png?key=IMAGE_KEY&e=🔥&l1=STRUCTURE FIRE&l2=Working fire&l3=Ashland, Boyd Co, KY
+// GET /map.png?sig=<HMAC>&e=🔥&l1=STRUCTURE FIRE&l2=Working fire&l3=Ashland, Boyd Co, KY
 //              &q=1200 Winchester Avenue, Ashland, KY&mode=pin|block|road|mile|town|county
 //              (or &lat=..&lon=.. instead of q); optional &z=17 to set the zoom
 // Returns a 1080x1080 PNG: dark Mapbox map with the incident marked per the 📍 privacy level,
@@ -37,17 +37,39 @@ async function geocode(q, mode, token) {
   return { lon, lat, name: (f.properties && (f.properties.full_address || f.properties.name)) || "" };
 }
 
+// AUTH: sig = HMAC-SHA256(IMAGE_KEY, the other parameters sorted as k=v joined by &), first 40 hex characters,
+// as the main Worker builds it, so the key itself never travels. The old ?key=IMAGE_KEY still works until
+// IMAGE_REQUIRE_SIG=on is set (deploy the new main Worker first, then turn it on).
+async function authorized(params, env) {
+  const sig = params.get("sig");
+  if (sig) {
+    const canon = [...params.entries()].filter(([k]) => k !== "sig" && k !== "key").sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)).map(([k, v]) => `${k}=${v}`).join("&");
+    const k = await crypto.subtle.importKey("raw", new TextEncoder().encode(String(env.IMAGE_KEY).trim()), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+    const want = [...new Uint8Array(await crypto.subtle.sign("HMAC", k, new TextEncoder().encode(canon)))].map((x) => x.toString(16).padStart(2, "0")).join("").slice(0, 40);
+    return same(sig, want);
+  }
+  if (String(env.IMAGE_REQUIRE_SIG || "").toLowerCase() === "on") return false;
+  return same(params.get("key") || "", String(env.IMAGE_KEY).trim());
+}
+function same(a, b) {
+  a = String(a); b = String(b);
+  let d = a.length ^ b.length;
+  for (let i = 0; i < Math.max(a.length, b.length); i++) d |= (a.charCodeAt(i) || 0) ^ (b.charCodeAt(i) || 0);
+  return d === 0;
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     if (url.pathname === "/" || url.pathname === "/health") return new Response("tlr-scribe-imageworker ok\n");
     if (url.pathname !== "/map.png") return new Response("not found\n", { status: 404 });
-    if (!env.IMAGE_KEY || url.searchParams.get("key") !== env.IMAGE_KEY) return new Response("forbidden\n", { status: 403 });
+    if (!env.IMAGE_KEY || !(await authorized(url.searchParams, env))) return new Response("forbidden\n", { status: 403 });
     if (!env.MAPBOX_TOKEN) return new Response("MAPBOX_TOKEN not set\n", { status: 500 });
 
-    // Cache by the request without the key.
+    // Cache by the request without the key or signature.
     const cacheUrl = new URL(url);
     cacheUrl.searchParams.delete("key");
+    cacheUrl.searchParams.delete("sig");
     const cacheKey = new Request(cacheUrl.toString(), { method: "GET" });
     const cache = caches.default;
     const hit = await cache.match(cacheKey);
@@ -55,7 +77,7 @@ export default {
 
     const p = url.searchParams;
     const mode = MODES.has(p.get("mode")) ? p.get("mode") : "town";
-    const accent = p.get("c") || accentFor(p.get("e"));
+    const accent = /^[0-9a-fA-F]{6}$/.test(p.get("c") || "") ? p.get("c") : accentFor(p.get("e"));
     let lon = parseFloat(p.get("lon")), lat = parseFloat(p.get("lat"));
     let found = "";
     try {
