@@ -199,7 +199,7 @@ A road name or route number may appear in a post ONLY if it is in that file. Sea
 If there is no road file for the county yet, prefer the repeated or clearly real name.
 
 PLACE RULES (first header line, after " · ")
-- Format: "<town or community>, <County> County, <ST>", with ST = KY, OH or WV. Always include county and state.
+- Format: "<town or community>, <County> County, <ST>", with ST = the two-letter state code (KY, OH, WV...). Always include county and state. Louisiana parishes and Alaska boroughs use their own word ("Parish", "Borough") in place of County.
 - If the transcript names a town, community or fire department area, write it as spoken in normal capitalization, even if not incorporated.
 - If the transcript names no place, find the town in this order, and say in step 7 how you found it ("town from address lookup"):
   1. ADDRESS LOOKUP: when a house number and street were dispatched, ONE web search for them with county and state ("814 Duncan Fork Road Mingo County WV"), only when the incident is first written. If results clearly show that exact house number and street with a town (the mailing city, e.g. "Delbarton, WV 25670"), use it: "Delbarton, Mingo County, WV". Use only the town; never use anything about who lives there, and never search a person's name. If results disagree or show only a different number, go on.
